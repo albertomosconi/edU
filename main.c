@@ -14,7 +14,26 @@ int main(int argc, char const *argv[])
         if (NULL == fgets(raw_input, sizeof(raw_input), stdin))
             break;
 
-        printf("%s", raw_input);
+        char *prova = "15c";
+        int i1, i2, success;
+        char c;
+
+        success = sscanf(prova, "%d,%d%c", &i1, &i2, &c);
+
+        switch (success)
+        {
+        case 1:
+            sscanf(prova, "%d%c", &i1, &c);
+            printf("%d %c %d", i1, c, success);
+            break;
+        case 3:
+            printf("%d %d %c %d", i1, i2, c, success);
+            break;
+
+        default:
+            printf("error\n");
+            break;
+        }
     }
     return 0;
 }
