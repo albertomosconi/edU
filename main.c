@@ -1,6 +1,3 @@
-/* edU */
-/* Alberto Mosconi - 2020 */
-
 #include <stdlib.h>
 #include <stdio.h>
 #define MAX_COMMAND_LENGTH 1024
@@ -14,24 +11,36 @@ int main(int argc, char const *argv[])
         if (NULL == fgets(raw_input, sizeof(raw_input), stdin))
             break;
 
-        char *prova = "15c";
-        int i1, i2, success;
+        int i1 = 0, i2 = 0;
         char c;
+        int success = sscanf(raw_input, "%d,%d%c", &i1, &i2, &c);
 
-        success = sscanf(prova, "%d,%d%c", &i1, &i2, &c);
+        if (1 == success)
+            sscanf(raw_input, "%d%c", &i1, &c);
+        else if (0 == success)
+            sscanf(raw_input, "%c", &c);
 
-        switch (success)
+        switch (c)
         {
-        case 1:
-            sscanf(prova, "%d%c", &i1, &c);
-            printf("%d %c %d", i1, c, success);
+        case 'q':
+            return 0;
+        case 'c':
+            printf("cambia testo\n");
             break;
-        case 3:
-            printf("%d %d %c %d", i1, i2, c, success);
+        case 'd':
+            printf("cancella testo\n");
+            break;
+        case 'p':
+            printf("stampa testo\n");
+            break;
+        case 'u':
+            printf("annullamento\n");
+            break;
+        case 'r':
+            printf("redo\n");
             break;
 
         default:
-            printf("error\n");
             break;
         }
     }
