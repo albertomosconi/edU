@@ -11,18 +11,19 @@ typedef struct
 typedef struct
 {
     state list[10];
-    int last;
+    int current, end;
 } history;
 
 int main(int argc, char const *argv[])
 {
     char raw_input[MAX_COMMAND_LENGTH];
     history document;
-    document.last = -1;
+    document.end = -1;
+    document.current = -1;
 
     while (1)
     {
-        // printf("> ");
+        printf("> ");
         if (NULL == gets(raw_input))
             break;
 
@@ -40,48 +41,53 @@ int main(int argc, char const *argv[])
         case 'q':
             return 0;
         case 'c':
-            // printf("editing %d lines\n", (i2 - i1 + 1));
+            if (document.current < document.end)
+                document.end = document.current;
+
+            state new_change;
+            new_change.tot_lines = 0;
+            if (document.end > -1)
+                new_change = document.list[document.end];
+
+            for (int i = i1 - 1; i < i2; ++i)
             {
-                state new_change;
-                new_change.tot_lines = 0;
-                if (document.last > -1)
-                    new_change = document.list[document.last];
-
-                for (int i = i1 - 1; i < i2; ++i)
-                {
-                    gets(new_change.file[i]);
-                }
-
-                if (i2 > document.list[document.last].tot_lines)
-                    new_change.tot_lines = i2;
-
-                document.list[++document.last] = new_change;
+                gets(new_change.file[i]);
             }
+
+            if (i2 > new_change.tot_lines)
+                new_change.tot_lines = i2;
+
+            document.list[++document.end] = new_change;
+            ++document.current;
             break;
         case 'd':
             printf("Cancella Testo\n");
             break;
         case 'p':
-            // printf("printing lines %d to %d\n", i1, i2);
-            for (int i = i1 - 1; (i < i2) && (i < document.list[document.last].tot_lines); ++i)
+            for (int i = i1 - 1; (i < i2) && (i < document.list[document.current].tot_lines); ++i)
             {
-                if ('\0' != document.list[document.last].file[i][0])
-                    puts(document.list[document.last].file[i]);
+                if ('\0' != document.list[document.current].file[i][0])
+                    puts(document.list[document.current].file[i]);
                 else
                     puts(".");
             }
             break;
         case 'u':
             printf("Undoing %d commands\n", i1);
-            if (i1 > document.last)
-                document.last = -1;
+            if (i1 > document.current)
+                document.current = -1;
             else
-                document.last -= i1;
+                document.current -= i1;
             break;
         case 'r':
-            printf("Redo\n");
+            printf("Redoing %d commands\n", i1);
+            if (document.current + i1 > document.end)
+                document.current = document.end;
+            else
+                document.current += i1;
             break;
         default:
+            printf("Current Version: %d\nLength: %d\nLast Version: %d\nLenght: %d\n", document.current + 1, document.list[document.current].tot_lines, document.end + 1, document.list[document.end].tot_lines);
             break;
         }
     }
