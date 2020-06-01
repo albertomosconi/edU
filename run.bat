@@ -1,2 +1,2 @@
-gcc main.c -o main
+gcc main.c -Wall -Werror -o main
 main
