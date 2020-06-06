@@ -6,7 +6,7 @@ Progetto di algoritmi e strutture dati
 
 - [Descrizione](#Descrizione)
 - [Esempio di input](#Esempio-di-input)
-- [La mia implementazione](#La-mia-implementazione)
+- [Implementazione](#Implementazione)
 
 ## Descrizione
 
@@ -29,7 +29,7 @@ I comandi supportati sono i seguenti, con la convenzione che **ind1**, **ind2** 
 - **(numero)u**  
   Effettua l'annullamento (**undo**) di un numero di comandi (**c** o **d**) pari a quello specicato tra parentesi tonde (laddove **numero** è un intero strettamente maggiore di zero). Una sequenza di comandi di **undo** consecutivi annulla un numero di passi pari alla somma dei passi specicati in ognuno di essi. Se il numero di comandi di cui effettuare l'annullamento è superiore a quello dei comandi eseguiti, vengono annullati tutti i passi. L'esecuzione di un comando di modica del testo (**c**, **d**) dopo un undo cancella gli effetti dei comandi annullati denitivamente. Si noti che nel numero dei comandi da annullare vengono contati anche i comandi che non hanno effetto (per esempio la cancellazione di un blocco di righe che non esistono).
 - **(numero)r**  
-  Annulla l’effetto diundoper un numero di comandi pari a numero a partire dalla versione corrente (funzione di **redo**). Si noti che **numero** deve essere un intero strettamente maggiore di zero. Si ha quindi che una sequenza di comandi del tipo
+  Annulla l’effetto di **undo** per un numero di comandi pari a numero a partire dalla versione corrente (funzione di **redo**). Si noti che **numero** deve essere un intero strettamente maggiore di zero. Si ha quindi che una sequenza di comandi del tipo
 
   ```
     10u
@@ -39,10 +39,10 @@ I comandi supportati sono i seguenti, con la convenzione che **ind1**, **ind2** 
   è a tutti gli effetti equivalente al solo comando **5u**. Similmente, la sequenza
 
   ```
-  12u
-  3r
-  2u
-  7r
+    12u
+    3r
+    2u
+    7r
   ```
 
   equivale al comando **4u**. Nel caso in cui il numero di comandi di cui effettuare il **redo** è superiore a quelli annullati correntemente, viene effettuato il numero massimo di **redo** possibili.
@@ -112,6 +112,6 @@ nuova seconda riga
 terza riga
 ```
 
-## La mia implementazione
+## Implementazione
 
 Questa è la mia soluzione.
