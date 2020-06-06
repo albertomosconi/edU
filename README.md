@@ -2,6 +2,12 @@
 
 Progetto di algoritmi e strutture dati
 
+## Indice
+
+- [Descrizione](#Descrizione)
+- [Esempio di input](#Esempio-di-input)
+- [La mia implementazione](#La-mia-implementazione)
+
 ## Descrizione
 
 Il progetto consiste nell’implementare un semplice editor di testi. L’editor considera un documento come una sequenza di righe, di dimensione arbitraria, numerate a partire da uno. La rappresentazione del documento comprende anche un indice intero, che rappresenta il numero di riga corrente, indicato da qui in poi come _indirizzo corrente_.
@@ -105,3 +111,7 @@ nuova prima riga
 nuova seconda riga
 terza riga
 ```
+
+## La mia implementazione
+
+Questa è la mia soluzione.
