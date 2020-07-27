@@ -1,0 +1,7 @@
+ogni riga:
+    lista concatenata:
+        ultima versione è in testa
+
+documento:
+    lista concatenata:
+        ogni nodo è una riga.
