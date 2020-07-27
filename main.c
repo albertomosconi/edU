@@ -99,8 +99,13 @@ void handlePrint()
 {
     printf("PRINT between %d and %d\n", i1, i2);
 
-    for (LineHistory *temp = head; temp != NULL; temp = temp->nextLine)
-        puts(temp->currentVersion->content);
+    LineHistory *currentLine = head;
+
+    for (int k = 1; (k < i1) && (currentLine != NULL); ++k)
+        currentLine = currentLine->nextLine;
+
+    for (currentLine; (currentLine != NULL) && (currentLine->index <= i2); currentLine = currentLine->nextLine)
+        puts(currentLine->currentVersion->content);
 
     return;
 }
