@@ -2,24 +2,24 @@
 #include <stdio.h>
 #define MAX_COMMAND_LENGTH 1024
 
+/* MAIN FUNCTIONS */
+void getInput();
+void handleChange();
+void handleDelete();
+void handlePrint();
+void handleUndo();
+void handleRedo();
+
+/* VARIABLES */
+char raw_input[MAX_COMMAND_LENGTH];
+int i1 = 0, i2 = 0;
+char c;
+
 int main(int argc, char const *argv[])
 {
-    char raw_input[MAX_COMMAND_LENGTH];
-
     while (1)
     {
-        printf("> ");
-        if (NULL == gets(raw_input))
-            break;
-
-        int i1 = 0, i2 = 0;
-        char c = 'q';
-
-        int success = sscanf(raw_input, "%d,%d%c", &i1, &i2, &c);
-        if (1 == success)
-            sscanf(raw_input, "%d%c", &i1, &c);
-        else if (0 == success)
-            sscanf(raw_input, "%c", &c);
+        getInput();
 
         switch (c)
         {
@@ -27,29 +27,74 @@ int main(int argc, char const *argv[])
             return 0;
 
         case 'c':
-            printf("CHANGE between %d and %d\n", i1, i2);
+            handleChange();
             break;
 
         case 'd':
-            printf("DELETE between %d and %d\n", i1, i2);
+            handleDelete();
             break;
 
         case 'p':
-            printf("PRINT between %d and %d\n", i1, i2);
+            handlePrint();
             break;
 
         case 'u':
-            printf("UNDO %d times\n", i1);
+            handleUndo();
             break;
 
         case 'r':
-            printf("REDO %d times\n", i1);
+            handleRedo();
             break;
 
         default:
-            printf("UNKNOWN command\n");
             break;
         }
     }
     return 0;
+}
+
+void getInput()
+{
+    i1 = 0, i2 = 0;
+    c = NULL;
+
+    printf("> ");
+    if (NULL == gets(raw_input))
+        return;
+
+    int success = sscanf(raw_input, "%d,%d%c", &i1, &i2, &c);
+    if (1 == success)
+        sscanf(raw_input, "%d%c", &i1, &c);
+    else if (0 == success)
+        sscanf(raw_input, "%c", &c);
+}
+
+void handleChange()
+{
+    printf("CHANGE between %d and %d\n", i1, i2);
+    return;
+}
+
+void handleDelete()
+{
+    printf("DELETE between %d and %d\n", i1, i2);
+    return;
+}
+
+void handlePrint()
+{
+    printf("PRINT between %d and %d\n", i1, i2);
+    return;
+}
+
+void handleUndo()
+{
+    printf("UNDO %d times\n", i1);
+    return;
+}
+
+void handleRedo()
+{
+    printf("REDO %d times\n", i1);
+    return;
 }
