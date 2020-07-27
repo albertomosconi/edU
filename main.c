@@ -55,9 +55,6 @@ int main(int argc, char const *argv[])
 
 void getInput()
 {
-    i1 = 0, i2 = 0;
-    c = NULL;
-
     printf("> ");
     if (NULL == gets(raw_input))
         return;
