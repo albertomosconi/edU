@@ -10,10 +10,27 @@ void handlePrint();
 void handleUndo();
 void handleRedo();
 
+/* STRUCTURES */
+typedef struct l
+{
+    char content[MAX_COMMAND_LENGTH];
+    struct l *prevVersion;
+    struct l *nextVersion;
+} Line;
+
+typedef struct lh
+{
+    int index;
+    Line *latestVersion;
+    Line *currentVersion;
+    struct lh *nextLine;
+} LineHistory;
+
 /* VARIABLES */
-char raw_input[MAX_COMMAND_LENGTH];
+char raw_command[MAX_COMMAND_LENGTH];
 int i1 = 0, i2 = 0;
 char c;
+LineHistory *head = NULL;
 
 int main(int argc, char const *argv[])
 {
@@ -56,14 +73,14 @@ int main(int argc, char const *argv[])
 void getInput()
 {
     printf("> ");
-    if (NULL == gets(raw_input))
+    if (NULL == gets(raw_command))
         return;
 
-    int success = sscanf(raw_input, "%d,%d%c", &i1, &i2, &c);
+    int success = sscanf(raw_command, "%d,%d%c", &i1, &i2, &c);
     if (1 == success)
-        sscanf(raw_input, "%d%c", &i1, &c);
+        sscanf(raw_command, "%d%c", &i1, &c);
     else if (0 == success)
-        sscanf(raw_input, "%c", &c);
+        sscanf(raw_command, "%c", &c);
 }
 
 void handleChange()
@@ -81,6 +98,10 @@ void handleDelete()
 void handlePrint()
 {
     printf("PRINT between %d and %d\n", i1, i2);
+
+    for (LineHistory *temp = head; temp != NULL; temp = temp->nextLine)
+        puts(temp->currentVersion->content);
+
     return;
 }
 
