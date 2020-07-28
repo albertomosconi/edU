@@ -92,20 +92,20 @@ LineHistory *initializeLineHistory(int i)
 
 void getInput()
 {
-    printf("> ");
-    if (NULL == gets(raw_command))
+    // printf("> ");
+    if (!fgets(raw_command, sizeof raw_command, stdin))
         return;
 
-    int success = sscanf(raw_command, "%d,%d%c", &i1, &i2, &c);
+    int success = sscanf(raw_command, "%d,%d%c%*c", &i1, &i2, &c);
     if (1 == success)
-        sscanf(raw_command, "%d%c", &i1, &c);
+        sscanf(raw_command, "%d%c%*c", &i1, &c);
     else if (0 == success)
-        sscanf(raw_command, "%c", &c);
+        sscanf(raw_command, "%c%*c", &c);
 }
 
 void handleChange()
 {
-    printf("CHANGE between %d and %d\n", i1, i2);
+    // printf("CHANGE between %d and %d\n", i1, i2);
 
     if (!head) /* if the document is empy initialize the first line */
         head = initializeLineHistory(1);
@@ -144,12 +144,15 @@ void handlePrint()
 
     LineHistory *currentLine = head;
 
+    if (i1 == 0)
+        printf(".\n");
+
     for (int k = 1; (k < i1) && (currentLine != NULL); ++k)
         currentLine = currentLine->nextLine;
 
     for (currentLine; (currentLine != NULL) && (currentLine->index <= i2); currentLine = currentLine->nextLine)
     {
-        printf("%d ", currentLine->index);
+        // printf("%d ", currentLine->index);
         puts(currentLine->currentVersion->content);
     }
 
