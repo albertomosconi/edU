@@ -20,7 +20,7 @@ typedef struct lh
 
 /* VARIABLES */
 char raw_command[MAX_COMMAND_LENGTH];
-int i1 = 0, i2 = 0;
+int i1, i2;
 char c;
 LineHistory *head = NULL;
 
@@ -107,30 +107,26 @@ void handleChange()
 {
     printf("CHANGE between %d and %d\n", i1, i2);
 
-    if (!head)
+    if (!head) /* if the document is empy initialize the first line */
         head = initializeLineHistory(1);
 
     LineHistory *currentLine = head;
-
-    for (int k = 2; k < i1; ++k)
+    for (int k = 1; k <= i2; ++k)
     {
-        if (currentLine->nextLine == NULL)
-            currentLine->nextLine = initializeLineHistory(k);
-        currentLine = currentLine->nextLine;
-    }
-
-    for (int k = i1; k <= i2; ++k)
-    {
-        if (currentLine->nextLine == NULL)
-            currentLine->nextLine = initializeLineHistory(k);
-
-        currentLine->nextLine->currentVersion = malloc(sizeof(Line));
-        currentLine->nextLine->latestVersion = currentLine->nextLine->currentVersion;
-        gets(currentLine->nextLine->currentVersion->content);
-        currentLine->nextLine->currentVersion->prevVersion = currentLine->nextLine->currentVersion;
-        currentLine->nextLine->currentVersion->nextVersion = NULL;
-
-        currentLine = currentLine->nextLine;
+        if (k >= i1)
+        { /* create a new version of the line and add it to the history */
+            currentLine->latestVersion = malloc(sizeof(Line));
+            currentLine->latestVersion->nextVersion = NULL;
+            currentLine->latestVersion->prevVersion = currentLine->currentVersion;
+            currentLine->currentVersion = currentLine->latestVersion;
+            gets(currentLine->currentVersion->content);
+        }
+        if (k != i2)
+        { /* if null initialize the next line until last element */
+            if (NULL == currentLine->nextLine)
+                currentLine->nextLine = initializeLineHistory(k + 1);
+            currentLine = currentLine->nextLine;
+        }
     }
 
     return;
@@ -144,7 +140,7 @@ void handleDelete()
 
 void handlePrint()
 {
-    printf("PRINT between %d and %d\n", i1, i2);
+    // printf("PRINT between %d and %d\n", i1, i2);
 
     LineHistory *currentLine = head;
 
@@ -152,7 +148,10 @@ void handlePrint()
         currentLine = currentLine->nextLine;
 
     for (currentLine; (currentLine != NULL) && (currentLine->index <= i2); currentLine = currentLine->nextLine)
+    {
+        printf("%d ", currentLine->index);
         puts(currentLine->currentVersion->content);
+    }
 
     return;
 }
