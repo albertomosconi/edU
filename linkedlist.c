@@ -119,7 +119,7 @@ void handleChange()
             currentLine->latestVersion->nextVersion = NULL;
             currentLine->latestVersion->prevVersion = currentLine->currentVersion;
             currentLine->currentVersion = currentLine->latestVersion;
-            gets(currentLine->currentVersion->content);
+            fgets(currentLine->currentVersion->content, sizeof(raw_command), stdin);
         }
         if (k != i2)
         { /* if null initialize the next line until last element */
@@ -145,7 +145,7 @@ void handlePrint()
     LineHistory *currentLine = head;
 
     if (i1 == 0)
-        printf(".\n");
+        fputs(".\n", stdout);
 
     for (int k = 1; (k < i1) && (currentLine != NULL); ++k)
         currentLine = currentLine->nextLine;
@@ -153,7 +153,7 @@ void handlePrint()
     for (currentLine; (currentLine != NULL) && (currentLine->index <= i2); currentLine = currentLine->nextLine)
     {
         // printf("%d ", currentLine->index);
-        puts(currentLine->currentVersion->content);
+        fputs(currentLine->currentVersion->content, stdout);
     }
 
     return;
