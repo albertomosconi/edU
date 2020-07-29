@@ -1,7 +1,24 @@
-ogni riga:
-    lista concatenata:
-        ultima versione è in testa
+ogni comando mi salva in memoria solo la serie di righe che modifica
+e gli indici che le indicizzano (aggiornati secondo i modificatori) 
 
-documento:
-    lista concatenata:
-        ogni nodo è una riga.
+creo una pila di comandi
+    change, delete
+
+per ogni cancellazione: (FORSE SI PUO' COMPATTARE)
+    aggiungo ad una lista un oggetto "modificatore"
+        modificatore:
+            int lim;
+            int mod;
+
+quando devo stampare
+    creo un array buffer di dimensione i2-i1+1 che riempo con le righe da stampare.
+
+    scorro la lista di modificatori e aggiorno gli indici.
+        per ogni modificatore:
+            per ogni indice:
+                se maggiore di 'lim' -> i += mod
+
+    scorro la pila dall'alto verso il basso e ogni riga che incontro
+    che è compresa in quelle che devo stampare la metto nella posizione 
+    giusta dell'array
+    quando ho tutte le righe stampo l'array e poi lo cancello.
