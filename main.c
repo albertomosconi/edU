@@ -14,6 +14,7 @@ struct StringNode /* node in the strings tree */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
 int i1, i2;                   /* line indexes specified in the command */
 char c;                       /* command character [q, c, d, p, u, r] */
+struct StringNode* strings = NULL;
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -34,6 +35,9 @@ struct StringNode *getSibling(struct StringNode *n); /* returns the sibling of a
 struct StringNode *getUncle(struct StringNode *n);   /* return the sibling of the parent of a given StringNode */
 void rotateLeft(struct StringNode *n);               /* rotates the string tree to the left */
 void rotateRight(struct StringNode *n);              /* rotates the string tree to the right */
+void insertString(char content[MAX_ROW_LENGTH]);
+struct StringNode *treeInsert(struct StringNode* n);
+void treeFixup(struct StringNode *n);
 
 int main()
 {
@@ -122,6 +126,14 @@ int min(int a, int b)
 }
 int minStr(char *a, char *b)
 { /* returns 1 if the string 'a' is < than 'b', otherwise 0 */
+    int k = 0;
+    while (a[k] != '\0')
+    {
+        if ((a[k] > b[k]) || (b[k] == '\0'))
+            return 0;
+        ++k;
+    }
+    return 1;
 }
 
 struct StringNode *getParent(struct StringNode *n) /* returns the parent of a given StringNode */
@@ -151,7 +163,77 @@ struct StringNode *getUncle(struct StringNode *n) /* return the sibling of the p
 }
 void rotateLeft(struct StringNode *n) /* rotates the string tree to the left */
 {
+    struct StringNode * n_right = n->right;
+    struct StringNode * p = getParent(n);
+
+    n->right = n_right->left;
+
+    if (n->right != NULL)
+        n->right->parent = n;
+
+    n_right->parent = p;
+
+    if (p == NULL)
+        strings = n_right;
+    else if (n == p->left)
+        p->left = n_right;
+    else
+        p->right = n_right;
+
+    n_right->left = n;
+    n->parent = n_right;
 }
 void rotateRight(struct StringNode *n) /* rotates the string tree to the right */
+{
+    struct StringNode * n_left = n->left;
+    struct StringNode * p = n->parent;
+
+    n->left = n_left->right;
+
+    if (n->right != NULL)
+        n->left->parent = n;
+
+    if (p == NULL)
+        strings = n_left;
+    else if (n == p->left)
+        p->left = n_left;
+    else
+        p->right = n_left;
+
+    n_left->right = n;
+    n->parent = n_left;
+}
+void insertString()
+{
+    struct StringNode newNode;
+    newNode.color = 1;
+    newNode.parent = NULL;
+    newNode.left = NULL;
+    newNode.right = NULL;
+    fgets(newNode.string, sizeof(newNode.string), stdin);
+
+    strings = treeInsert(&newNode);
+
+    treeFixup(&newNode);
+}
+struct StringNode *treeInsert(struct StringNode* root, struct StringNode* n)
+{
+    if (strings == NULL)
+        return n;
+
+    if (minStr(n->string, root->string))
+    {
+        root->left = treeInsert(root->left, n);
+        root->left->parent = root;
+    }
+    else if (maxStr(n->string, root->string))
+    {
+        root->right = treeInsert(root->right, n);
+        root->right->parent = root;
+    }
+
+    return root;
+}
+void treeFixup(struct StringNode *n)
 {
 }
