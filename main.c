@@ -112,38 +112,28 @@ void getInput()
 }
 void handleChange()
 { /* process change command */
-    while (command_history != actual_command)
-    {
-        command_history = command_history->prev;
-        free(command_history->next);
-    }
-
     updateIndexes(); /* update the indexes with the modifiers */
-
-    if (!command_history)
-    {
-        command_history = malloc(sizeof(struct Command));
-        command_history->prev = NULL;
-    }
-    else
-    {
-        command_history->next = malloc(sizeof(struct Command));
-        command_history->next->prev = command_history;
-        command_history = command_history->next;
-    }
-    command_history->c = c;
-    command_history->i1 = i1;
-    command_history->i2 = i2;
+    cmdToHistory();  /* add a new command struct to the list */
     command_history->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
-    {
+    { /* insert the new content */
         command_history->lines[k] = insertString();
     }
     command_history->next = NULL;
     actual_command = command_history;
 }
 void handleDelete()
-{ /* procerss delete command */
+{ /* process delete command */
+    struct Modifier* new = (struct Modifier *)malloc(sizeof(struct Modifier));
+    new->val = i2 - i1 + 1;
+    new->lim = i1;
+    new->next = mods;
+    new->prev = NULL;
+    mods->prev = new;
+    mods = new;
+
+    updateIndexes(); /* update the indexes with the modifiers */
+    cmdToHistory();  /* add a new command struct to the list */
 }
 void handlePrint()
 { /* process print command */
@@ -194,9 +184,36 @@ void handleRedo()
 
 void updateIndexes()
 { /* applies all the modifiers to the indexes */
+    struct Modifier *temp = mods;
+    while (temp != NULL)
+    {
+        if (i1 >= temp->lim)
+            i1 += temp->val;
+        if (i2 >= temp->lim)
+            i2 += temp->val;
+    }
 }
 void cmdToHistory()
 { /* adds a new change or delete command to the history */
+    while (command_history != actual_command)
+    {
+        command_history = command_history->prev;
+        free(command_history->next);
+    }
+    if (!command_history)
+    {
+        command_history = malloc(sizeof(struct Command));
+        command_history->prev = NULL;
+    }
+    else
+    {
+        command_history->next = malloc(sizeof(struct Command));
+        command_history->next->prev = command_history;
+        command_history = command_history->next;
+    }
+    command_history->c = c;
+    command_history->i1 = i1;
+    command_history->i2 = i2;
 }
 int max(int a, int b)
 { /* returns maximum between a and b */
