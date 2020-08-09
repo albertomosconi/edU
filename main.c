@@ -152,12 +152,9 @@ void handleDelete()
         latest_mod = (struct Modifier *)malloc(sizeof(struct Modifier));
         latest_mod->next = NULL;
     }
-    else
-    {
         latest_mod->prev = (struct Modifier *)malloc(sizeof(struct Modifier));
         latest_mod->prev->next = latest_mod;
         latest_mod = latest_mod->prev;
-    }
 
     updateIndexes();
     latest_mod->val = i2 - i1 + 1;
@@ -206,7 +203,7 @@ void handlePrint()
 }
 void handleUndo()
 { /* process undo command */
-    while((current_command != NULL) && (i1>0))
+    while((current_command!=NULL)&&(current_command->prev!=NULL) && (i1>0))
     {
         if (current_command->c == 'd')
             current_mod = current_mod->next;
@@ -216,7 +213,7 @@ void handleUndo()
 }
 void handleRedo()
 { /* process redo command */
-    while((current_command != latest_command)&&(i1>0))
+    while((current_command!=NULL)&&(current_command->next!=NULL)&&(i1>0))
     {
         if (current_command->c=='d')
             current_mod=current_mod->prev;
@@ -254,14 +251,11 @@ void cmdToHistory()
     {
         latest_command = (struct Command *)malloc(sizeof(struct Command));
         latest_command->prev = NULL;
-        latest_command->next = NULL;
     }
-    else
-    {
-        latest_command->next = (struct Command *)malloc(sizeof(struct Command));
-        latest_command->next->prev = latest_command;
-        latest_command = latest_command->next;
-    }
+    latest_command->next = (struct Command *)malloc(sizeof(struct Command));
+    latest_command->next->prev = latest_command;
+    latest_command = latest_command->next;
+    latest_command->next = NULL;
     latest_command->c = c;
     latest_command->i1 = i1;
     latest_command->i2 = i2;
@@ -296,11 +290,15 @@ int strCmp(char *a, char *b)
 void displayInfo()
 {
     printf("--- INFO ---\n");
-    int totcmd = 0, totdels=0;
+    int totcmd = 0, totcurrcmd=0, totdels=0, totcurrdels=0;
     for(struct Command * temp = latest_command;temp!=NULL;temp=temp->prev)
         if(temp->c=='d') totdels++; else totcmd++;
-    printf("tot cmds: %d\n",totcmd);
+    for(struct Command *temp=current_command;temp!=NULL;temp=temp->prev)
+        if(temp->c=='d') totcurrdels++; else totcurrcmd++;
+    printf("tot cmds: %d\n",totcmd-1);
+    printf("tot current cmds: %d\n",totcurrcmd-1);
     printf("tot dels: %d\n",totdels);
+    printf("tot current dels: %d\n",totcurrdels);
     i1=1;
     i2=10;
     handlePrint();
