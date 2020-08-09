@@ -10,30 +10,31 @@ struct StringNode /* node in the strings tree */
     int color;                   /* node color, 1->red, 0->black */
     char string[MAX_ROW_LENGTH]; /* string contents */
 };
-struct Command
-{ /* command object to be stored in the history stack */
-    char c;
-    int i1, i2;
+struct Command /* command object to be stored in the history stack */
+{ 
     struct StringNode **lines; /* list of pointers to the lines in the tree */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
+    char c;
+    int i1, i2;
 };
-struct Modifier
+struct Modifier /* contains info about a deletion */
 {
-    int lim;               /* index above which the modifier must be applied */
-    int val;               /* number of deleted lines */
     struct Modifier *next; /* next modifier */
     struct Modifier *prev; /* previous modifier */
+    int lim;               /* index above which the modifier must be applied */
+    int val;               /* number of deleted lines */
 };
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
-int i1, i2;                   /* line indexes specified in the command */
 char c;                       /* command character [q, c, d, p, u, r] */
+int *mods;
+int i1, i2;                   /* line indexes specified in the command */
 struct StringNode *strings = NULL;
-struct Command *command_history = NULL;
-struct Command *actual_command = NULL;
-struct Modifier *mods = NULL;
-struct Modifier *actual_mod = NULL;
+struct Command *latest_command = NULL;
+struct Command *current_command = NULL;
+struct Modifier *latest_mod = NULL;
+struct Modifier *current_mod = NULL;
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -44,10 +45,10 @@ void handleRedo();   /* process redo command */
 /* HELPER FUNCTIONS */
 int max(int a, int b);        /* returns maximum between a and b */
 int min(int a, int b);        /* returns minimum between a and b */
-int minStr(char *a, char *b); /* returns 1 if the string 'a' is < than 'b', otherwise 0 */
 int maxStr(char *a, char *b); /* returns 1 if the string 'a' is > than 'b', otherwise 0 */
 void updateIndexes();         /* applies all the modifiers to the indexes */
 void cmdToHistory();          /* adds a new change or delete command to the history */
+void displayInfo();
 /* STRINGS TREE FUNCTIONS */
 struct StringNode *getParent(struct StringNode *n);  /* returns the parent of a given StringNode */
 struct StringNode *getGrandpa(struct StringNode *n); /* returns the parent of the parent of the given StringNode */
@@ -70,18 +71,25 @@ int main()
             return 0;
         case 'c': /* change lines */
             handleChange();
+            displayInfo();
             break;
         case 'd': /* delete lines */
             handleDelete();
+            displayInfo();
             break;
         case 'p': /* print lines */
             handlePrint();
             break;
         case 'u': /* undo commands */
             handleUndo();
+            displayInfo();
             break;
         case 'r': /* redo commands */
             handleRedo();
+            displayInfo();
+            break;
+        case 'i': /* show useful info */
+            displayInfo();
             break;
         case '.': /* termination character */
             break;
@@ -114,48 +122,63 @@ void handleChange()
 { /* process change command */
     updateIndexes(); /* update the indexes with the modifiers */
     cmdToHistory();  /* add a new command struct to the list */
-    command_history->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+
+    latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
-        command_history->lines[k] = insertString();
+        latest_command->lines[k] = insertString();
     }
-    command_history->next = NULL;
-    actual_command = command_history;
+    latest_command->next = NULL;
+    current_command = latest_command;
 }
 void handleDelete()
 { /* process delete command */
-    struct Modifier* new = (struct Modifier *)malloc(sizeof(struct Modifier));
-    new->val = i2 - i1 + 1;
-    new->lim = i1;
-    new->next = mods;
-    new->prev = NULL;
-    mods->prev = new;
-    mods = new;
-
-    updateIndexes(); /* update the indexes with the modifiers */
+    
     cmdToHistory();  /* add a new command struct to the list */
+
+    while (latest_mod != current_mod)
+    {
+        latest_mod = latest_mod->next;
+        free(latest_mod->prev);
+    }
+    if (latest_mod == NULL)
+    {
+        latest_mod = (struct Modifier *)malloc(sizeof(struct Modifier));
+        latest_mod->next = NULL;
+    }
+    else
+    {
+        latest_mod->prev = (struct Modifier *)malloc(sizeof(struct Modifier));
+        latest_mod->prev->next = latest_mod;
+        latest_mod = latest_mod->prev;
+    }
+
+    updateIndexes();
+    latest_mod->val = i2 - i1 + 1;
+    latest_mod->lim = mods[0];
+    current_mod = latest_mod;
 }
 void handlePrint()
 { /* process print command */
-    struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
-    int *found = calloc((i2 - i1 + 1), sizeof(int));
+    struct StringNode **buffer = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+    int *found = (int *)calloc((i2 - i1 + 1), sizeof(int));
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
 
     updateIndexes(); /* update the indexes with the modifiers */
 
-    struct Command *curr_cmd = actual_command;
+    struct Command *curr_cmd = current_command;
     while ((curr_cmd != NULL) && (to_find > 0))
     {
-        if ((i1 <= curr_cmd->i2) && (i2 >= curr_cmd->i1))
+        if ((curr_cmd->c == 'c') && (i1+mods[0] <= curr_cmd->i2) && (i2+mods[i2-i1] >= curr_cmd->i1))
         {
             /* save lines from max(i1, curr_cmd->i1) to min(i2, curr_cmd->i2) */
-            for (int k = max(i1 - curr_cmd->i1, 0); k < min(i2, curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
+            for (int k = max(i1+mods[0] - curr_cmd->i1, 0); k < min(i2+mods[i2-i1], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
             {
-                if (!found[k + (curr_cmd->i1 - i1)])
+                if (!found[k + (curr_cmd->i1 - i1-mods[0])])
                 {
-                    buffer[k + (curr_cmd->i1 - i1)] = curr_cmd->lines[k];
-                    found[k + (curr_cmd->i1 - i1)] = 1;
+                    buffer[k + (curr_cmd->i1 - i1-mods[0])] = curr_cmd->lines[k];
+                    found[k + (curr_cmd->i1 - i1-mods[0])] = 1;
                     --to_find;
                 }
             }
@@ -177,43 +200,66 @@ void handlePrint()
 }
 void handleUndo()
 { /* process undo command */
+    while((current_command != NULL) && (i1>0))
+    {
+        if (current_command->c == 'd')
+            current_mod = current_mod->next;
+        current_command = current_command->prev;
+        --i1;
+    }
 }
 void handleRedo()
 { /* process redo command */
+    while((current_command != latest_command)&&(i1>0))
+    {
+        if (current_command->c=='d')
+            current_mod=current_mod->prev;
+        current_command=current_command->next;
+        --i1;
+    }
 }
 
 void updateIndexes()
 { /* applies all the modifiers to the indexes */
-    struct Modifier *temp = mods;
-    while (temp != NULL)
+    free(mods);
+    mods = (int *)calloc((i2 - i1 + 1),sizeof(int));
+    struct Modifier *temp = current_mod;
+    while(temp != NULL)
     {
-        if (i1 >= temp->lim)
-            i1 += temp->val;
-        if (i2 >= temp->lim)
-            i2 += temp->val;
+        for(int k=0;k<(i2-i1+1);++k)
+            if(i1+k>=temp->lim)
+                mods[k]+=temp->val;
+        temp = temp->prev;
     }
 }
 void cmdToHistory()
 { /* adds a new change or delete command to the history */
-    while (command_history != actual_command)
+    while (latest_command != current_command)
     {
-        command_history = command_history->prev;
-        free(command_history->next);
+        latest_command = latest_command->prev;
+        if (latest_command->c == 'd')
+        {
+            latest_mod = latest_mod->next;
+            free(latest_mod->prev);
+        }
+        free(latest_command->next);
     }
-    if (!command_history)
+    if (!latest_command)
     {
-        command_history = malloc(sizeof(struct Command));
-        command_history->prev = NULL;
+        latest_command = (struct Command *)malloc(sizeof(struct Command));
+        latest_command->prev = NULL;
+        latest_command->next = NULL;
     }
     else
     {
-        command_history->next = malloc(sizeof(struct Command));
-        command_history->next->prev = command_history;
-        command_history = command_history->next;
+        latest_command->next = (struct Command *)malloc(sizeof(struct Command));
+        latest_command->next->prev = latest_command;
+        latest_command = latest_command->next;
     }
-    command_history->c = c;
-    command_history->i1 = i1;
-    command_history->i2 = i2;
+    latest_command->c = c;
+    latest_command->i1 = i1;
+    latest_command->i2 = i2;
+    current_command=latest_command;
 }
 int max(int a, int b)
 { /* returns maximum between a and b */
@@ -226,18 +272,6 @@ int min(int a, int b)
     if (a > b)
         return b;
     return a;
-}
-int minStr(char *a, char *b)
-{ /* returns 1 if the string 'a' is < than 'b', otherwise 0 */
-    int k = 0;
-
-    while (a[k] != '\0')
-    {
-        if ((a[k] > b[k]) || (b[k] == '\0'))
-            return 0;
-        ++k;
-    }
-    return 1;
 }
 int strCmp(char *a, char *b)
 { /* returns 0 if a == b, >0 if a>b, <0 if a<b */
@@ -252,6 +286,19 @@ int strCmp(char *a, char *b)
             return c1 - c2;
     } while (c1 == c2);
     return c1 - c2;
+}
+void displayInfo()
+{
+    printf("--- INFO ---\n");
+    int totcmd = 0, totdels=0;
+    for(struct Command * temp = latest_command;temp!=NULL;temp=temp->prev)
+        if(temp->c=='d') totdels++; else totcmd++;
+    printf("tot cmds: %d\n",totcmd);
+    printf("tot dels: %d\n",totdels);
+    i1=1;
+    i2=10;
+    handlePrint();
+    printf("------------\n");
 }
 struct StringNode *getParent(struct StringNode *n) /* returns the parent of a given StringNode */
 {
