@@ -1,12 +1,13 @@
 /*
-edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
-2019-2020, Politecnico di Milano
-Alberto Mosconi
+* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
+* 2019-2020, Politecnico di Milano
+* Alberto Mosconi
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #define MAX_ROW_LENGTH 1025 /* maximum length of input strings */
+
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
@@ -77,22 +78,22 @@ int main()
             return 0;
         case 'c': /* change lines */
             handleChange();
-            displayInfo();
+            //displayInfo();
             break;
         case 'd': /* delete lines */
             handleDelete();
-            displayInfo();
+            //displayInfo();
             break;
         case 'p': /* print lines */
             handlePrint();
             break;
         case 'u': /* undo commands */
             handleUndo();
-            displayInfo();
+            //displayInfo();
             break;
         case 'r': /* redo commands */
             handleRedo();
-            displayInfo();
+            //displayInfo();
             break;
         case 'i': /* show useful info */
             displayInfo();
@@ -129,7 +130,7 @@ void handleChange()
     updateIndexes(); /* update the indexes with the modifiers */
     cmdToHistory();  /* add a new command struct to the list */
 
-    latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+    latest_command->lines = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
@@ -152,14 +153,16 @@ void handleDelete()
         latest_mod = (struct Modifier *)malloc(sizeof(struct Modifier));
         latest_mod->next = NULL;
     }
-        latest_mod->prev = (struct Modifier *)malloc(sizeof(struct Modifier));
-        latest_mod->prev->next = latest_mod;
-        latest_mod = latest_mod->prev;
+    latest_mod->prev = (struct Modifier *)malloc(sizeof(struct Modifier));
+    latest_mod->prev->next = latest_mod;
+    latest_mod = latest_mod->prev;
 
     updateIndexes();
     latest_mod->val = i2 - i1 + 1;
-    latest_mod->lim = mods[0];
+    latest_mod->lim = i1+mods[0];
     current_mod = latest_mod;
+
+    printf("val: %d\nlim: %d\n", latest_mod->val, latest_mod->lim);
 }
 void handlePrint()
 { /* process print command */
@@ -300,7 +303,7 @@ void displayInfo()
     printf("tot dels: %d\n",totdels);
     printf("tot current dels: %d\n",totcurrdels);
     i1=1;
-    i2=10;
+    i2=15;
     handlePrint();
     printf("------------\n");
 }
@@ -373,7 +376,7 @@ void rotateRight(struct StringNode *n) /* rotates the string tree to the right *
 }
 struct StringNode *insertString()
 { /* gets new line from stdin and inserts in memory (if it doesn't exist already) and returns a pointer to it */
-    struct StringNode *newNode = malloc(sizeof(struct StringNode));
+    struct StringNode *newNode = (struct StringNode *)malloc(sizeof(struct StringNode));
     newNode->color = 1;
     newNode->parent = NULL;
     newNode->left = NULL;
