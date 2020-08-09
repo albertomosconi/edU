@@ -1,3 +1,9 @@
+/*
+edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
+2019-2020, Politecnico di Milano
+Alberto Mosconi
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #define MAX_ROW_LENGTH 1025 /* maximum length of input strings */
