@@ -163,6 +163,7 @@ void handleDelete()
     current_mod = latest_mod;
 
     printf("val: %d\nlim: %d\n", latest_mod->val, latest_mod->lim);
+    printf("------------\n");
 }
 void handlePrint()
 { /* process print command */

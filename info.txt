@@ -9,6 +9,8 @@ per ogni cancellazione: (FORSE SI PUO' COMPATTARE)
         modificatore:
             int lim;
             int mod;
+INVECE DI RICORSTRUIRE OGNI VOLTA LA SERIE,
+FORSE POSSO COSTRUIRLA SOLO QUANTO FACCIO UNA CANCELLAZIONE
 
 quando devo stampare
     creo un array buffer di dimensione i2-i1+1 che riempo con le righe da stampare.
@@ -22,3 +24,21 @@ quando devo stampare
     che è compresa in quelle che devo stampare la metto nella posizione 
     giusta dell'array
     quando ho tutte le righe stampo l'array e poi lo cancello.
+
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+
+4
+5
+6
+7
+8
+9
