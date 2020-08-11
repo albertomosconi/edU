@@ -114,4 +114,7 @@ terza riga
 
 ## Implementazione
 
-Questa è la mia soluzione.
+La struttura principale che contiene le righe di testo è un albero rosso/nero e, tramite questo, si garantisce l'assenzia di stringhe doppie, ed una lettura e scrittura veloce dei contenuti.
+
+La storia dei comandi eseguiti dall'utente è tenuta in una lista concatenata bidirezionale, per cui l'inserimento di un nuovo comando avviene in tempo costante.
+Ogni nodo di questa lista è una struct contenente, oltre al carattere che identifica il comando e i due numeri i1 e i2, una lista di puntatori alle stringhe interessate in memoria.
