@@ -1,8 +1,6 @@
-/*
-* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
-* 2019-2020, Politecnico di Milano
-* Alberto Mosconi
-*/
+/* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
+ * 2019-2020, Politecnico di Milano
+ * Alberto Mosconi */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,13 +23,13 @@ struct Command /* command object to be stored in the history stack */
     char c;
     int i1, i2;
 };
-struct Modifier /* contains info about a deletion */
-{
-    struct Modifier *next; /* next modifier */
-    struct Modifier *prev; /* previous modifier */
-    int lim;               /* index above which the modifier must be applied */
-    int val;               /* number of deleted lines */
-};
+// struct Modifier /* contains info about a deletion */
+// {
+//     struct Modifier *next; /* next modifier */
+//     struct Modifier *prev; /* previous modifier */
+//     int lim;               /* index above which the modifier must be applied */
+//     int val;               /* number of deleted lines */
+// };
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
 char c;                       /* command character [q, c, d, p, u, r] */
