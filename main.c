@@ -33,9 +33,9 @@ struct Command /* command object to be stored in the history stack */
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
 char c;                       /* command character [q, c, d, p, u, r] */
-int *mods = NULL;
-int modlen = 0;
-int i1, i2; /* line indexes specified in the command */
+int *mods = NULL;             /* array of modifiers */
+int modlen = 0;               /* stores the line number after which all mod values are the same */
+int i1, i2;                   /* line indexes specified in the command */
 struct StringNode *strings = NULL;
 struct Command *latest_command = NULL;
 struct Command *current_command = NULL;
@@ -68,6 +68,9 @@ void treeFixup(struct StringNode *n);
 
 int main()
 {
+    mods = (int *)calloc(1, sizeof(int));
+    modlen = 1;
+
     while (1)
     {
         getInput(); /* fetch and parse input */
@@ -155,9 +158,9 @@ void handleDelete()
     for (int k = i1 - 1; k < modlen; ++k)
         mods[k] += i2 - i1 + 1;
 
-    // for (int k = 0; k < modlen; ++k)
-    //     printf("%d ", mods[k]);
-    // printf("\n");
+    for (int k = 0; k < modlen; ++k)
+        printf("%d ", mods[k]);
+    printf("\n");
 
     cmdToHistory(); /* add a new command struct to the list */
 }
@@ -168,42 +171,86 @@ void handlePrint()
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
 
-    updateIndexes(); /* update the indexes with the modifiers */
-
-    if (mods == NULL)
-        mods = (int *)calloc(1, sizeof(int));
-
-    struct Command *curr_cmd = current_command;
-    while ((curr_cmd != NULL) && (to_find > 0))
+    for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
     {
-        if ((curr_cmd->c == 'c') && (i1 + mods[0] <= curr_cmd->i2) && (i2 + mods[min(i2 - i1, modlen - 1)] >= curr_cmd->i1))
+        if (curr_cmd->c == 'c')
         {
-            /* save lines from max(i1, curr_cmd->i1) to min(i2, curr_cmd->i2) */
-            for (int k = max(i1 + mods[0] - curr_cmd->i1, 0); k < min(i2 + mods[min(i2 - i1, modlen - 1)], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
+            if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1))
             {
-                if (!found[k + (curr_cmd->i1 - i1 - mods[0])])
+                // printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
+                // for (int k = 0; k < modlen; ++k)
+                //     printf("%d ", mods[k]);
+                // printf("\n");
+                for (int j = 0; j < i2 - i1 + 1; ++j)
                 {
-                    buffer[k + (curr_cmd->i1 - i1 - mods[0])] = curr_cmd->lines[k];
-                    found[k + (curr_cmd->i1 - i1 - mods[0])] = 1;
-                    --to_find;
+                    if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1) && (!found[j]))
+                    {
+                        // printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
+                        // fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
+                        found[j] = 1;
+                        buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
+                        --to_find;
+                    }
                 }
             }
         }
-        curr_cmd = curr_cmd->prev;
     }
 
     /* print the buffer */
     for (int k = 0; k < len; ++k)
     {
+        printf("%d ", k + 1);
         if (!found[k])
             fputs(".\n", stdout);
         else
             fputs(buffer[k]->string, stdout);
     }
-
     free(buffer);
     free(found);
 }
+// void handlePrint()
+// { /* process print command */
+//     struct StringNode **buffer = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+//     int *found = (int *)calloc((i2 - i1 + 1), sizeof(int));
+//     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
+//     int len = to_find;
+
+//     updateIndexes(); /* update the indexes with the modifiers */
+
+//     if (mods == NULL)
+//         mods = (int *)calloc(1, sizeof(int));
+
+//     struct Command *curr_cmd = current_command;
+//     while ((curr_cmd != NULL) && (to_find > 0))
+//     {
+//         if ((curr_cmd->c == 'c') && (i1 + mods[0] <= curr_cmd->i2) && (i2 + mods[min(i2 - i1, modlen - 1)] >= curr_cmd->i1))
+//         {
+//             /* save lines from max(i1, curr_cmd->i1) to min(i2, curr_cmd->i2) */
+//             for (int k = max(i1 + mods[0] - curr_cmd->i1, 0); k < min(i2 + mods[min(i2 - i1, modlen - 1)], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
+//             {
+//                 if (!found[k + (curr_cmd->i1 - i1 - mods[0])])
+//                 {
+//                     buffer[k + (curr_cmd->i1 - i1 - mods[0])] = curr_cmd->lines[k];
+//                     found[k + (curr_cmd->i1 - i1 - mods[0])] = 1;
+//                     --to_find;
+//                 }
+//             }
+//         }
+//         curr_cmd = curr_cmd->prev;
+//     }
+
+//     /* print the buffer */
+//     for (int k = 0; k < len; ++k)
+//     {
+//         if (!found[k])
+//             fputs(".\n", stdout);
+//         else
+//             fputs(buffer[k]->string, stdout);
+//     }
+
+//     free(buffer);
+//     free(found);
+// }
 void handleUndo()
 { /* process undo command */
     while ((current_command != NULL) && (current_command->prev != NULL) && (i1 > 0))
@@ -270,8 +317,10 @@ void cmdToHistory()
     latest_command = latest_command->next;
     latest_command->next = NULL;
     latest_command->c = c;
-    latest_command->i1 = i1;
-    latest_command->i2 = i2;
+    // latest_command->i1 = i1;
+    // latest_command->i2 = i2;
+    latest_command->i1 = i1 + mods[min(i1, modlen - 1)];
+    latest_command->i2 = i2 + mods[min(i2, modlen - 1)];
     current_command = latest_command;
 }
 int max(int a, int b)
