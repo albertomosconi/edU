@@ -18,7 +18,7 @@ struct StringNode /* node in the strings tree */
     char string[MAX_ROW_LENGTH]; /* string contents */
 };
 struct Command /* command object to be stored in the history stack */
-{ 
+{
     struct StringNode **lines; /* list of pointers to the lines in the tree */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
@@ -36,7 +36,7 @@ struct Modifier /* contains info about a deletion */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
 char c;                       /* command character [q, c, d, p, u, r] */
 int *mods;
-int i1, i2;                   /* line indexes specified in the command */
+int i1, i2; /* line indexes specified in the command */
 struct StringNode *strings = NULL;
 struct Command *latest_command = NULL;
 struct Command *current_command = NULL;
@@ -126,7 +126,7 @@ void getInput()
     }
 }
 void handleChange()
-{ /* process change command */
+{                    /* process change command */
     updateIndexes(); /* update the indexes with the modifiers */
     cmdToHistory();  /* add a new command struct to the list */
 
@@ -140,8 +140,8 @@ void handleChange()
 }
 void handleDelete()
 { /* process delete command */
-    
-    cmdToHistory();  /* add a new command struct to the list */
+
+    cmdToHistory(); /* add a new command struct to the list */
 
     while (latest_mod != current_mod)
     {
@@ -159,7 +159,7 @@ void handleDelete()
 
     updateIndexes();
     latest_mod->val = i2 - i1 + 1;
-    latest_mod->lim = i1+mods[0];
+    latest_mod->lim = i1 + mods[0];
     current_mod = latest_mod;
 
     printf("val: %d\nlim: %d\n", latest_mod->val, latest_mod->lim);
@@ -177,15 +177,15 @@ void handlePrint()
     struct Command *curr_cmd = current_command;
     while ((curr_cmd != NULL) && (to_find > 0))
     {
-        if ((curr_cmd->c == 'c') && (i1+mods[0] <= curr_cmd->i2) && (i2+mods[i2-i1] >= curr_cmd->i1))
+        if ((curr_cmd->c == 'c') && (i1 + mods[0] <= curr_cmd->i2) && (i2 + mods[i2 - i1] >= curr_cmd->i1))
         {
             /* save lines from max(i1, curr_cmd->i1) to min(i2, curr_cmd->i2) */
-            for (int k = max(i1+mods[0] - curr_cmd->i1, 0); k < min(i2+mods[i2-i1], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
+            for (int k = max(i1 + mods[0] - curr_cmd->i1, 0); k < min(i2 + mods[i2 - i1], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
             {
-                if (!found[k + (curr_cmd->i1 - i1-mods[0])])
+                if (!found[k + (curr_cmd->i1 - i1 - mods[0])])
                 {
-                    buffer[k + (curr_cmd->i1 - i1-mods[0])] = curr_cmd->lines[k];
-                    found[k + (curr_cmd->i1 - i1-mods[0])] = 1;
+                    buffer[k + (curr_cmd->i1 - i1 - mods[0])] = curr_cmd->lines[k];
+                    found[k + (curr_cmd->i1 - i1 - mods[0])] = 1;
                     --to_find;
                 }
             }
@@ -207,7 +207,7 @@ void handlePrint()
 }
 void handleUndo()
 { /* process undo command */
-    while((current_command!=NULL)&&(current_command->prev!=NULL) && (i1>0))
+    while ((current_command != NULL) && (current_command->prev != NULL) && (i1 > 0))
     {
         if (current_command->c == 'd')
             current_mod = current_mod->next;
@@ -217,11 +217,11 @@ void handleUndo()
 }
 void handleRedo()
 { /* process redo command */
-    while((current_command!=NULL)&&(current_command->next!=NULL)&&(i1>0))
+    while ((current_command != NULL) && (current_command->next != NULL) && (i1 > 0))
     {
-        if (current_command->c=='d')
-            current_mod=current_mod->prev;
-        current_command=current_command->next;
+        if (current_command->c == 'd')
+            current_mod = current_mod->prev;
+        current_command = current_command->next;
         --i1;
     }
 }
@@ -229,13 +229,13 @@ void handleRedo()
 void updateIndexes()
 { /* applies all the modifiers to the indexes */
     free(mods);
-    mods = (int *)calloc((i2 - i1 + 1),sizeof(int));
+    mods = (int *)calloc((i2 - i1 + 1), sizeof(int));
     struct Modifier *temp = current_mod;
-    while(temp != NULL)
+    while (temp != NULL)
     {
-        for(int k=0;k<(i2-i1+1);++k)
-            if(i1+k>=temp->lim)
-                mods[k]+=temp->val;
+        for (int k = 0; k < (i2 - i1 + 1); ++k)
+            if (i1 + k >= temp->lim)
+                mods[k] += temp->val;
         temp = temp->prev;
     }
 }
@@ -263,7 +263,7 @@ void cmdToHistory()
     latest_command->c = c;
     latest_command->i1 = i1;
     latest_command->i2 = i2;
-    current_command=latest_command;
+    current_command = latest_command;
 }
 int max(int a, int b)
 { /* returns maximum between a and b */
@@ -294,17 +294,23 @@ int strCmp(char *a, char *b)
 void displayInfo()
 {
     printf("--- INFO ---\n");
-    int totcmd = 0, totcurrcmd=0, totdels=0, totcurrdels=0;
-    for(struct Command * temp = latest_command;temp!=NULL;temp=temp->prev)
-        if(temp->c=='d') totdels++; else totcmd++;
-    for(struct Command *temp=current_command;temp!=NULL;temp=temp->prev)
-        if(temp->c=='d') totcurrdels++; else totcurrcmd++;
-    printf("tot cmds: %d\n",totcmd-1);
-    printf("tot current cmds: %d\n",totcurrcmd-1);
-    printf("tot dels: %d\n",totdels);
-    printf("tot current dels: %d\n",totcurrdels);
-    i1=1;
-    i2=15;
+    int totcmd = 0, totcurrcmd = 0, totdels = 0, totcurrdels = 0;
+    for (struct Command *temp = latest_command; temp != NULL; temp = temp->prev)
+        if (temp->c == 'd')
+            totdels++;
+        else
+            totcmd++;
+    for (struct Command *temp = current_command; temp != NULL; temp = temp->prev)
+        if (temp->c == 'd')
+            totcurrdels++;
+        else
+            totcurrcmd++;
+    printf("tot cmds: %d\n", totcmd - 1);
+    printf("tot current cmds: %d\n", totcurrcmd - 1);
+    printf("tot dels: %d\n", totdels);
+    printf("tot current dels: %d\n", totcurrdels);
+    i1 = 1;
+    i2 = 15;
     handlePrint();
     printf("------------\n");
 }
@@ -412,7 +418,7 @@ struct StringNode *treeInsert(struct StringNode *root, struct StringNode *n, str
         root->right = treeInsert(root->right, n, s);
         root->right->parent = root;
     }
-    else 
+    else
     {
         free(n);
         *s = root;
