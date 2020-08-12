@@ -35,13 +35,14 @@ struct Modifier /* contains info about a deletion */
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
 char c;                       /* command character [q, c, d, p, u, r] */
-int *mods;
+int *mods = NULL;
+int modlen = 0;
 int i1, i2; /* line indexes specified in the command */
 struct StringNode *strings = NULL;
 struct Command *latest_command = NULL;
 struct Command *current_command = NULL;
-struct Modifier *latest_mod = NULL;
-struct Modifier *current_mod = NULL;
+// struct Modifier *latest_mod = NULL;
+// struct Modifier *current_mod = NULL;
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -140,30 +141,27 @@ void handleChange()
 }
 void handleDelete()
 { /* process delete command */
+    if (i1 > modlen)
+    {
+        int *temp = (int *)calloc(i1, sizeof(int));
+        int k = 0;
+        for (; k < modlen; ++k)
+            temp[k] = mods[k];
+        if (modlen > 0)
+            for (; k < i1; ++k)
+                temp[k] += mods[modlen - 1];
+        modlen = i1;
+        free(mods);
+        mods = temp;
+    }
+    for (int k = i1 - 1; k < modlen; ++k)
+        mods[k] += i2 - i1 + 1;
+
+    // for (int k = 0; k < modlen; ++k)
+    //     printf("%d ", mods[k]);
+    // printf("\n");
 
     cmdToHistory(); /* add a new command struct to the list */
-
-    while (latest_mod != current_mod)
-    {
-        latest_mod = latest_mod->next;
-        free(latest_mod->prev);
-    }
-    if (latest_mod == NULL)
-    {
-        latest_mod = (struct Modifier *)malloc(sizeof(struct Modifier));
-        latest_mod->next = NULL;
-    }
-    latest_mod->prev = (struct Modifier *)malloc(sizeof(struct Modifier));
-    latest_mod->prev->next = latest_mod;
-    latest_mod = latest_mod->prev;
-
-    updateIndexes();
-    latest_mod->val = i2 - i1 + 1;
-    latest_mod->lim = i1 + mods[0];
-    current_mod = latest_mod;
-
-    printf("val: %d\nlim: %d\n", latest_mod->val, latest_mod->lim);
-    printf("------------\n");
 }
 void handlePrint()
 { /* process print command */
@@ -174,13 +172,16 @@ void handlePrint()
 
     updateIndexes(); /* update the indexes with the modifiers */
 
+    if (mods == NULL)
+        mods = (int *)calloc(1, sizeof(int));
+
     struct Command *curr_cmd = current_command;
     while ((curr_cmd != NULL) && (to_find > 0))
     {
-        if ((curr_cmd->c == 'c') && (i1 + mods[0] <= curr_cmd->i2) && (i2 + mods[i2 - i1] >= curr_cmd->i1))
+        if ((curr_cmd->c == 'c') && (i1 + mods[0] <= curr_cmd->i2) && (i2 + mods[min(i2 - i1, modlen - 1)] >= curr_cmd->i1))
         {
             /* save lines from max(i1, curr_cmd->i1) to min(i2, curr_cmd->i2) */
-            for (int k = max(i1 + mods[0] - curr_cmd->i1, 0); k < min(i2 + mods[i2 - i1], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
+            for (int k = max(i1 + mods[0] - curr_cmd->i1, 0); k < min(i2 + mods[min(i2 - i1, modlen - 1)], curr_cmd->i2) - curr_cmd->i1 + 1; ++k)
             {
                 if (!found[k + (curr_cmd->i1 - i1 - mods[0])])
                 {
@@ -210,7 +211,12 @@ void handleUndo()
     while ((current_command != NULL) && (current_command->prev != NULL) && (i1 > 0))
     {
         if (current_command->c == 'd')
-            current_mod = current_mod->next;
+        {
+            for (int k = current_command->i1 - 1; k < modlen; ++k)
+            {
+                mods[k] -= current_command->i2 - current_command->i1 + 1;
+            }
+        }
         current_command = current_command->prev;
         --i1;
     }
@@ -219,36 +225,41 @@ void handleRedo()
 { /* process redo command */
     while ((current_command != NULL) && (current_command->next != NULL) && (i1 > 0))
     {
-        if (current_command->c == 'd')
-            current_mod = current_mod->prev;
         current_command = current_command->next;
+        if (current_command->c == 'd')
+        {
+            for (int k = current_command->i1 - 1; k < modlen; ++k)
+            {
+                mods[k] += current_command->i2 - current_command->i1 + 1;
+            }
+        }
         --i1;
     }
 }
 
 void updateIndexes()
 { /* applies all the modifiers to the indexes */
-    free(mods);
-    mods = (int *)calloc((i2 - i1 + 1), sizeof(int));
-    struct Modifier *temp = current_mod;
-    while (temp != NULL)
-    {
-        for (int k = 0; k < (i2 - i1 + 1); ++k)
-            if (i1 + k >= temp->lim)
-                mods[k] += temp->val;
-        temp = temp->prev;
-    }
+    // free(mods);
+    // mods = (int *)calloc((i2 - i1 + 1), sizeof(int));
+    // struct Modifier *temp = current_mod;
+    // while (temp != NULL)
+    // {
+    //     for (int k = 0; k < (i2 - i1 + 1); ++k)
+    //         if (i1 + k >= temp->lim)
+    //             mods[k] += temp->val;
+    //     temp = temp->prev;
+    // }
 }
 void cmdToHistory()
 { /* adds a new change or delete command to the history */
     while (latest_command != current_command)
     {
         latest_command = latest_command->prev;
-        if (latest_command->c == 'd')
-        {
-            latest_mod = latest_mod->next;
-            free(latest_mod->prev);
-        }
+        // if (latest_command->c == 'd')
+        // {
+        //     latest_mod = latest_mod->next;
+        //     free(latest_mod->prev);
+        // }
         free(latest_command->next);
     }
     if (!latest_command)
@@ -294,24 +305,27 @@ int strCmp(char *a, char *b)
 void displayInfo()
 {
     printf("--- INFO ---\n");
-    int totcmd = 0, totcurrcmd = 0, totdels = 0, totcurrdels = 0;
-    for (struct Command *temp = latest_command; temp != NULL; temp = temp->prev)
-        if (temp->c == 'd')
-            totdels++;
-        else
-            totcmd++;
-    for (struct Command *temp = current_command; temp != NULL; temp = temp->prev)
-        if (temp->c == 'd')
-            totcurrdels++;
-        else
-            totcurrcmd++;
-    printf("tot cmds: %d\n", totcmd - 1);
-    printf("tot current cmds: %d\n", totcurrcmd - 1);
-    printf("tot dels: %d\n", totdels);
-    printf("tot current dels: %d\n", totcurrdels);
-    i1 = 1;
-    i2 = 15;
-    handlePrint();
+    // int totcmd = 0, totcurrcmd = 0, totdels = 0, totcurrdels = 0;
+    // for (struct Command *temp = latest_command; temp != NULL; temp = temp->prev)
+    //     if (temp->c == 'd')
+    //         totdels++;
+    //     else
+    //         totcmd++;
+    // for (struct Command *temp = current_command; temp != NULL; temp = temp->prev)
+    //     if (temp->c == 'd')
+    //         totcurrdels++;
+    //     else
+    //         totcurrcmd++;
+    // printf("tot cmds: %d\n", totcmd - 1);
+    // printf("tot current cmds: %d\n", totcurrcmd - 1);
+    // printf("tot dels: %d\n", totdels);
+    // printf("tot current dels: %d\n", totcurrdels);
+    for (int k = 0; k < modlen; ++k)
+        printf("%d ", mods[k]);
+    printf("\n");
+    // i1 = 1;
+    // i2 = 15;
+    // handlePrint();
     printf("------------\n");
 }
 struct StringNode *getParent(struct StringNode *n) /* returns the parent of a given StringNode */
