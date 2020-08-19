@@ -158,9 +158,9 @@ void handleDelete()
     for (int k = i1 - 1; k < modlen; ++k)
         mods[k] += i2 - i1 + 1;
 
-    for (int k = 0; k < modlen; ++k)
-        printf("%d ", mods[k]);
-    printf("\n");
+    // for (int k = 0; k < modlen; ++k)
+    //     printf("%d ", mods[k]);
+    // printf("\n");
 
     cmdToHistory(); /* add a new command struct to the list */
 }
@@ -181,7 +181,7 @@ void handlePrint()
                 // for (int k = 0; k < modlen; ++k)
                 //     printf("%d ", mods[k]);
                 // printf("\n");
-                for (int j = 0; j < i2 - i1 + 1; ++j)
+                for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
                 {
                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1) && (!found[j]))
                     {
@@ -199,7 +199,7 @@ void handlePrint()
     /* print the buffer */
     for (int k = 0; k < len; ++k)
     {
-        printf("%d ", k + 1);
+        // printf("%d ", k + 1);
         if (!found[k])
             fputs(".\n", stdout);
         else
