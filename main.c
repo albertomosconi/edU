@@ -171,22 +171,25 @@ void handlePrint()
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
 
+    printf("Printing\n");
+
     for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
     {
         if (curr_cmd->c == 'c')
         {
+            printf("change command\n");
             if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1))
             {
-                // printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
-                // for (int k = 0; k < modlen; ++k)
-                //     printf("%d ", mods[k]);
-                // printf("\n");
+                printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
+                for (int k = 0; k < modlen; ++k)
+                    printf("%d ", mods[k]);
+                printf("\n");
                 for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
                 {
                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1) && (!found[j]))
                     {
-                        // printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
-                        // fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
+                        printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
+                        fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
                         found[j] = 1;
                         buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
                         --to_find;
