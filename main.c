@@ -142,6 +142,9 @@ void handleChange()
 }
 void handleDelete()
 { /* process delete command */
+
+    cmdToHistory(); /* add a new command struct to the list */
+
     if (i1 > modlen)
     {
         int *temp = (int *)calloc(i1, sizeof(int));
@@ -161,8 +164,6 @@ void handleDelete()
     // for (int k = 0; k < modlen; ++k)
     //     printf("%d ", mods[k]);
     // printf("\n");
-
-    cmdToHistory(); /* add a new command struct to the list */
 }
 void handlePrint()
 { /* process print command */
@@ -171,25 +172,25 @@ void handlePrint()
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
 
-    printf("Printing\n");
+    // printf("Printing\n");
 
     for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
     {
         if (curr_cmd->c == 'c')
         {
-            printf("change command\n");
+            // printf("change command\n");
             if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1))
             {
-                printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
-                for (int k = 0; k < modlen; ++k)
-                    printf("%d ", mods[k]);
-                printf("\n");
+                // printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
+                // for (int k = 0; k < modlen; ++k)
+                //     printf("%d ", mods[k]);
+                // printf("\n");
                 for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
                 {
                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1) && (!found[j]))
                     {
-                        printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
-                        fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
+                        // printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
+                        // fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
                         found[j] = 1;
                         buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
                         --to_find;
@@ -258,10 +259,14 @@ void handleUndo()
 { /* process undo command */
     while ((current_command != NULL) && (current_command->prev != NULL) && (i1 > 0))
     {
+        // printf("%c\n", current_command->c);
         if (current_command->c == 'd')
         {
+            // printf("d i1: %d\n", current_command->i1);
+
             for (int k = current_command->i1 - 1; k < modlen; ++k)
             {
+                // printf("%d\n", k);
                 mods[k] -= current_command->i2 - current_command->i1 + 1;
             }
         }
@@ -324,6 +329,7 @@ void cmdToHistory()
     // latest_command->i2 = i2;
     latest_command->i1 = i1 + mods[min(i1, modlen - 1)];
     latest_command->i2 = i2 + mods[min(i2, modlen - 1)];
+    // printf("i1 %d latesti1 %d\n", i1, latest_command->i1);
     current_command = latest_command;
 }
 int max(int a, int b)
