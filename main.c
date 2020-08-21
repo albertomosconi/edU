@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #define MAX_ROW_LENGTH 1025 /* maximum length of input strings */
 
 /* STRUCTURES */
@@ -49,11 +50,10 @@ void handlePrint();  /* process print command */
 void handleUndo();   /* process undo command */
 void handleRedo();   /* process redo command */
 /* HELPER FUNCTIONS */
-int max(int a, int b);        /* returns maximum between a and b */
-int min(int a, int b);        /* returns minimum between a and b */
-int maxStr(char *a, char *b); /* returns 1 if the string 'a' is > than 'b', otherwise 0 */
-void updateIndexes();         /* applies all the modifiers to the indexes */
-void cmdToHistory();          /* adds a new change or delete command to the history */
+int max(int a, int b); /* returns maximum between a and b */
+int min(int a, int b); /* returns minimum between a and b */
+void updateIndexes();  /* applies all the modifiers to the indexes */
+void cmdToHistory();   /* adds a new change or delete command to the history */
 void displayInfo();
 /* STRINGS TREE FUNCTIONS */
 struct StringNode *getParent(struct StringNode *n);  /* returns the parent of a given StringNode */
@@ -145,15 +145,25 @@ void handleDelete()
 
     cmdToHistory(); /* add a new command struct to the list */
 
-    if (i1 > modlen)
+    int ni1 = i1 + mods[min(i1, modlen - 1)],
+        ni2 = i2 + mods[min(i2, modlen - 1)];
+
+    // printf("i1: %d, i2: %d\nni1: %d, ni2: %d\n", i1, i2, ni1, ni2);
+
+    if (ni1 > modlen)
     {
         int *temp = (int *)calloc(i1, sizeof(int));
-        int k = 0;
-        for (; k < modlen; ++k)
-            temp[k] = mods[k];
-        if (modlen > 0)
-            for (; k < i1; ++k)
-                temp[k] += mods[modlen - 1];
+
+        // int k = 0;
+        // for (; k < modlen; ++k)
+        //     temp[k] = mods[k];
+        // if (modlen > 0)
+        //     for (; k < ni1; ++k)
+        //         temp[k] += mods[modlen - 1];
+
+        for (int k = 0; k < i1; ++k)
+            temp[k] = mods[min(k, modlen - 1)];
+
         modlen = i1;
         free(mods);
         mods = temp;
@@ -344,20 +354,6 @@ int min(int a, int b)
         return b;
     return a;
 }
-int strCmp(char *a, char *b)
-{ /* returns 0 if a == b, >0 if a>b, <0 if a<b */
-    char *s1 = (char *)a;
-    char *s2 = (char *)b;
-    char c1, c2;
-    do
-    {
-        c1 = (char)*s1++;
-        c2 = (char)*s2++;
-        if (c1 == '\0')
-            return c1 - c2;
-    } while (c1 == c2);
-    return c1 - c2;
-}
 void displayInfo()
 {
     printf("--- INFO ---\n");
@@ -477,7 +473,7 @@ struct StringNode *treeInsert(struct StringNode *root, struct StringNode *n, str
         return n;
     }
 
-    int cmp = strCmp(n->string, root->string);
+    int cmp = strcmp(n->string, root->string);
     if (cmp < 0)
     {
         root->left = treeInsert(root->left, n, s);
