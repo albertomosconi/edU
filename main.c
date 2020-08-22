@@ -22,7 +22,7 @@ struct Command /* command object to be stored in the history stack */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
     char c;
-    int i1, i2;
+    int i1, i2, mi1, mi2;
 };
 // struct Modifier /* contains info about a deletion */
 // {
@@ -128,9 +128,9 @@ void getInput()
     }
 }
 void handleChange()
-{                    /* process change command */
-    updateIndexes(); /* update the indexes with the modifiers */
-    cmdToHistory();  /* add a new command struct to the list */
+{ /* process change command */
+
+    cmdToHistory(); /* add a new command struct to the list */
 
     latest_command->lines = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
@@ -143,6 +143,11 @@ void handleChange()
 void handleDelete()
 { /* process delete command */
 
+    // if ((!latest_command) && (c == 'd'))
+    // {
+    //     printf("\nnot\n");
+    //     return;
+    // }
     cmdToHistory(); /* add a new command struct to the list */
 
     int ni1 = i1 + mods[min(i1, modlen - 1)],
@@ -189,7 +194,7 @@ void handlePrint()
         if (curr_cmd->c == 'c')
         {
             // printf("change command\n");
-            if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1))
+            if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1))
             {
                 // printf("ci1: %d, c2i: %d\n", curr_cmd->i1, curr_cmd->i2);
                 // for (int k = 0; k < modlen; ++k)
@@ -197,12 +202,12 @@ void handlePrint()
                 // printf("\n");
                 for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
                 {
-                    if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1) && (!found[j]))
+                    if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1) && (!found[j]))
                     {
                         // printf("i: %d ci1: %d i1: %d j: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)], curr_cmd->i1, i1, j);
                         // fputs(curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1]->string, stdout);
                         found[j] = 1;
-                        buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
+                        buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1];
                         --to_find;
                     }
                 }
@@ -291,11 +296,16 @@ void handleRedo()
         current_command = current_command->next;
         if (current_command->c == 'd')
         {
+            // printf("redoing delete\tlim: %d\tval: %d\n", current_command->i1 - 1, current_command->i2 - current_command->i1 + 1);
             for (int k = current_command->i1 - 1; k < modlen; ++k)
             {
                 mods[k] += current_command->i2 - current_command->i1 + 1;
             }
         }
+        // else
+        // {
+        //     printf("redoing change\ti1: %d\ti2: %d\n", current_command->i1, current_command->i2);
+        // }
         --i1;
     }
 }
@@ -335,11 +345,12 @@ void cmdToHistory()
     latest_command = latest_command->next;
     latest_command->next = NULL;
     latest_command->c = c;
-    // latest_command->i1 = i1;
-    // latest_command->i2 = i2;
-    latest_command->i1 = i1 + mods[min(i1, modlen - 1)];
-    latest_command->i2 = i2 + mods[min(i2, modlen - 1)];
+    latest_command->i1 = i1;
+    latest_command->i2 = i2;
+    latest_command->mi1 = mods[min(i1, modlen - 1)];
+    latest_command->mi2 = mods[min(i2, modlen - 1)];
     // printf("i1 %d latesti1 %d\n", i1, latest_command->i1);
+    // printf("new command: %c\n", c);
     current_command = latest_command;
 }
 int max(int a, int b)
@@ -375,6 +386,14 @@ void displayInfo()
     for (int k = 0; k < modlen; ++k)
         printf("%d ", mods[k]);
     printf("\n");
+
+    struct Command *temp = current_command;
+    while (temp != NULL)
+    {
+        printf("%c\t%d\t%d\n", temp->c, temp->i1, temp->i2);
+        temp = temp->prev;
+    }
+
     // i1 = 1;
     // i2 = 15;
     // handlePrint();
