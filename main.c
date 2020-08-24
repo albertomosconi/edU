@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAX_ROW_LENGTH 1025 /* maximum length of input strings */
+#define MAX_ROW_LENGTH 250 /* maximum length of input strings */
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
