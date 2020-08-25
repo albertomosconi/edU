@@ -24,12 +24,12 @@ struct Command /* command object to be stored in the history stack */
     int i1, i2, mi1, mi2;      /* original indexes and modified indexes */
 };
 /* GENERAL VARIABLES */
-char raw_cmd[MAX_CMD_LENGTH]; /* command buffer */
-char c;                       /* command character [q, c, d, p, u, r] */
-int *mods = NULL;             /* array of modifiers */
-int modlen = 1;               /* stores the line number after which all mod values are the same */
-int i1, i2;                   /* line indexes specified in the command */
-struct StringNode *strings = NULL;
+char raw_cmd[MAX_CMD_LENGTH];      /* command buffer */
+char c;                            /* command character [q, c, d, p, u, r] */
+int *mods = NULL;                  /* array of modifiers */
+int modlen = 1;                    /* stores the line number after which all mod values are the same */
+int i1, i2;                        /* line indexes specified in the command */
+struct StringNode *strings = NULL; /* red black tree containing all the strings */
 struct Command *latest_command = NULL;
 struct Command *current_command = NULL;
 /* MAIN FUNCTIONS */
@@ -53,6 +53,8 @@ void treeFixup(struct StringNode *n);
 
 int main()
 {
+    /* TODO: ACCORPARE UNDO E REDO, ASPETTARE IL COMANDO DOPO E VEDERE SE è UNA UNDO O REDO E NEL CASO LE UNISCO */
+
     mods = (int *)calloc(1, sizeof(int));
     while (1)
     {
@@ -75,8 +77,6 @@ int main()
             break;
         case 'r': /* redo commands */
             handleRedo();
-            break;
-        case '.': /* termination character */
             break;
         default: /* unknown command */
             break;
