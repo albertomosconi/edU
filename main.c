@@ -304,6 +304,8 @@ void rotateRight(struct StringNode *n) /* rotates the string tree to the right *
     if (n->left != NULL)
         n->left->parent = n;
 
+    n_left->parent = p;
+
     if (p == NULL)
         strings = n_left;
     else if (n == p->left)
