@@ -5,9 +5,15 @@
 #include <stdlib.h>
 #include <string.h>
 #define MAX_ROW_LENGTH 250 /* maximum length of input strings */
-#define MAX_CMD_LENGTH 100 /* maximum length of cmd strings * / \
+#define MAX_CMD_LENGTH 100 /* maximum length of cmd strings */
+#define QUIT_C 'q'
+#define CHANGE_C 'c'
+#define DELETE_C 'd'
+#define PRINT_C 'p'
+#define UNDO_C 'u'
+#define REDO_C 'r'
 /* STRUCTURES */
-struct StringNode          /* node in the strings tree */
+struct StringNode /* node in the strings tree */
 {
     struct StringNode *parent;   /* parent node */
     struct StringNode *left;     /* left node */
@@ -26,9 +32,9 @@ struct Command /* command object to be stored in the history stack */
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_CMD_LENGTH];           /* command buffer */
 char c;                                 /* command character [q, c, d, p, u, r] */
+int i1, i2;                             /* line indexes specified in the command */
 int *mods = NULL;                       /* array of modifiers */
 int modlen = 1;                         /* stores the line number after which all mod values are the same */
-int i1, i2;                             /* line indexes specified in the command */
 int apply = 0;                          /* if 1 applies consecutive undos and redos at once */
 int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
 int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
@@ -62,21 +68,21 @@ int main()
         getInput(); /* fetch and parse input */
         switch (c)  /* handle different commands */
         {
-        case 'q': /* terminate the program */
+        case QUIT_C: /* terminate the program */
             return 0;
-        case 'c': /* change lines */
+        case CHANGE_C: /* change lines */
             handleChange();
             break;
-        case 'd': /* delete lines */
+        case DELETE_C: /* delete lines */
             handleDelete();
             break;
-        case 'p': /* print lines */
+        case PRINT_C: /* print lines */
             handlePrint();
             break;
-        case 'u': /* undo commands */
+        case UNDO_C: /* undo commands */
             handleUndo();
             break;
-        case 'r': /* redo commands */
+        case REDO_C: /* redo commands */
             handleRedo();
             break;
         default: /* unknown command */
