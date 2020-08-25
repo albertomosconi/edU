@@ -1,13 +1,13 @@
 /* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
  * 2019-2020, Politecnico di Milano
  * Alberto Mosconi */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #define MAX_ROW_LENGTH 250 /* maximum length of input strings */
+#define MAX_CMD_LENGTH 100 /* maximum length of cmd strings * / \
 /* STRUCTURES */
-struct StringNode /* node in the strings tree */
+struct StringNode          /* node in the strings tree */
 {
     struct StringNode *parent;   /* parent node */
     struct StringNode *left;     /* left node */
@@ -20,11 +20,11 @@ struct Command /* command object to be stored in the history stack */
     struct StringNode **lines; /* list of pointers to the lines in the tree */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
-    char c;
-    int i1, i2, mi1, mi2;
+    char c;                    /* command code */
+    int i1, i2, mi1, mi2;      /* original indexes and modified indexes */
 };
 /* GENERAL VARIABLES */
-char raw_cmd[MAX_ROW_LENGTH]; /* command buffer */
+char raw_cmd[MAX_CMD_LENGTH]; /* command buffer */
 char c;                       /* command character [q, c, d, p, u, r] */
 int *mods = NULL;             /* array of modifiers */
 int modlen = 1;               /* stores the line number after which all mod values are the same */
@@ -45,12 +45,8 @@ int min(int a, int b); /* returns minimum between a and b */
 void cmdToHistory();   /* adds a new change or delete command to the history */
 void displayInfo();
 /* STRINGS TREE FUNCTIONS */
-struct StringNode *getParent(struct StringNode *n);  /* returns the parent of a given StringNode */
-struct StringNode *getGrandpa(struct StringNode *n); /* returns the parent of the parent of the given StringNode */
-struct StringNode *getSibling(struct StringNode *n); /* returns the sibling of a given StringNode */
-struct StringNode *getUncle(struct StringNode *n);   /* return the sibling of the parent of a given StringNode */
-void rotateLeft(struct StringNode *n);               /* rotates the string tree to the left */
-void rotateRight(struct StringNode *n);              /* rotates the string tree to the right */
+void rotateLeft(struct StringNode *n);  /* rotates the string tree to the left */
+void rotateRight(struct StringNode *n); /* rotates the string tree to the right */
 struct StringNode *insertString();
 struct StringNode *treeInsert(struct StringNode *root, struct StringNode *n, struct StringNode **s);
 void treeFixup(struct StringNode *n);
@@ -67,25 +63,18 @@ int main()
             return 0;
         case 'c': /* change lines */
             handleChange();
-            //displayInfo();
             break;
         case 'd': /* delete lines */
             handleDelete();
-            //displayInfo();
             break;
         case 'p': /* print lines */
             handlePrint();
             break;
         case 'u': /* undo commands */
             handleUndo();
-            //displayInfo();
             break;
         case 'r': /* redo commands */
             handleRedo();
-            //displayInfo();
-            break;
-        case 'i': /* show useful info */
-            displayInfo();
             break;
         case '.': /* termination character */
             break;
@@ -95,7 +84,6 @@ int main()
     }
     return 0;
 }
-
 void getInput()
 { /* receive and parse input commands from stdin */
     if (!fgets(raw_cmd, sizeof(raw_cmd), stdin))
@@ -249,50 +237,10 @@ int min(int a, int b)
         return b;
     return a;
 }
-void displayInfo()
-{
-    printf("--- INFO ---\n");
-    for (int k = 0; k < modlen; ++k)
-        printf("%d ", mods[k]);
-    printf("\n");
-
-    struct Command *temp = current_command;
-    while (temp != NULL)
-    {
-        printf("%c\t%d\t%d\n", temp->c, temp->i1, temp->i2);
-        temp = temp->prev;
-    }
-    printf("------------\n");
-}
-struct StringNode *getParent(struct StringNode *n) /* returns the parent of a given StringNode */
-{
-    if (NULL == n)
-        return NULL;
-    return n->parent;
-}
-struct StringNode *getGrandpa(struct StringNode *n) /* returns the parent of the parent of the given StringNode */
-{
-    return getParent(getParent(n));
-}
-struct StringNode *getSibling(struct StringNode *n) /* returns the sibling of a given StringNode */
-{
-    struct StringNode *p = getParent(n);
-    if (NULL == p)
-        return NULL;
-    if (n == p->left)
-        return p->right;
-    else
-        return p->left;
-}
-struct StringNode *getUncle(struct StringNode *n) /* return the sibling of the parent of a given StringNode */
-{
-    struct StringNode *p = getParent(n);
-    return getSibling(p);
-}
 void rotateLeft(struct StringNode *n) /* rotates the string tree to the left */
 {
     struct StringNode *n_right = n->right;
-    struct StringNode *p = getParent(n);
+    struct StringNode *p = n->parent;
 
     n->right = n_right->left;
 
