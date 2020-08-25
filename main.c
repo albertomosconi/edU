@@ -20,18 +20,21 @@ struct Command /* command object to be stored in the history stack */
     struct StringNode **lines; /* list of pointers to the lines in the tree */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
-    char c;                    /* command code */
+    char c;                    /* command character */
     int i1, i2, mi1, mi2;      /* original indexes and modified indexes */
 };
 /* GENERAL VARIABLES */
-char raw_cmd[MAX_CMD_LENGTH];      /* command buffer */
-char c;                            /* command character [q, c, d, p, u, r] */
-int *mods = NULL;                  /* array of modifiers */
-int modlen = 1;                    /* stores the line number after which all mod values are the same */
-int i1, i2;                        /* line indexes specified in the command */
-struct StringNode *strings = NULL; /* red black tree containing all the strings */
-struct Command *latest_command = NULL;
-struct Command *current_command = NULL;
+char raw_cmd[MAX_CMD_LENGTH];           /* command buffer */
+char c;                                 /* command character [q, c, d, p, u, r] */
+int *mods = NULL;                       /* array of modifiers */
+int modlen = 1;                         /* stores the line number after which all mod values are the same */
+int i1, i2;                             /* line indexes specified in the command */
+int apply = 0;                          /* if 1 applies consecutive undos and redos at once */
+int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
+int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
+struct StringNode *strings = NULL;      /* red black tree containing all the strings */
+struct Command *latest_command = NULL;  /* pointer to latest command */
+struct Command *current_command = NULL; /* pointer to current command */
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -43,18 +46,16 @@ void handleRedo();   /* process redo command */
 int max(int a, int b); /* returns maximum between a and b */
 int min(int a, int b); /* returns minimum between a and b */
 void cmdToHistory();   /* adds a new change or delete command to the history */
-void displayInfo();
+void applyUndos();     /* trigger application of grouped undos and redos */
 /* STRINGS TREE FUNCTIONS */
-void rotateLeft(struct StringNode *n);  /* rotates the string tree to the left */
-void rotateRight(struct StringNode *n); /* rotates the string tree to the right */
 struct StringNode *insertString();
 struct StringNode *treeInsert(struct StringNode *root, struct StringNode *n, struct StringNode **s);
-void treeFixup(struct StringNode *n);
+void rotateLeft(struct StringNode *n);  /* rotates the string tree to the left */
+void rotateRight(struct StringNode *n); /* rotates the string tree to the right */
+void treeFixup(struct StringNode *n);   /* fix colors of tree */
 
 int main()
 {
-    /* TODO: ACCORPARE UNDO E REDO, ASPETTARE IL COMANDO DOPO E VEDERE SE è UNA UNDO O REDO E NEL CASO LE UNISCO */
-
     mods = (int *)calloc(1, sizeof(int));
     while (1)
     {
@@ -101,6 +102,8 @@ void getInput()
         i1 = -1;
         i2 = -1;
     }
+    if ((c != 'u') && (c != 'r'))
+        applyUndos();
 }
 void handleChange()
 { /* process change command */
@@ -114,15 +117,11 @@ void handleChange()
     latest_command->next = NULL;
     current_command = latest_command;
 }
-void handleDelete()
-{ /* process delete command */
-
+void handleDelete() /* process delete command */
+{
     cmdToHistory(); /* add a new command struct to the list */
 
-    int ni1 = i1 + mods[min(i1, modlen - 1)],
-        ni2 = i2 + mods[min(i2, modlen - 1)];
-
-    if (ni1 > modlen)
+    if (i1 + current_command->mi1 > modlen)
     {
         int *temp = (int *)calloc(i1, sizeof(int));
 
@@ -136,8 +135,8 @@ void handleDelete()
     for (int k = i1 - 1; k < modlen; ++k)
         mods[k] += i2 - i1 + 1;
 }
-void handlePrint()
-{ /* process print command */
+void handlePrint() /* process print command */
+{
     struct StringNode **buffer = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     int *found = (int *)calloc((i2 - i1 + 1), sizeof(int));
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
@@ -172,38 +171,55 @@ void handlePrint()
     free(buffer);
     free(found);
 }
-void handleUndo()
-{ /* process undo command */
-    while ((current_command != NULL) && (current_command->prev != NULL) && (i1 > 0))
+void handleUndo() /* process undo command */
+{
+    if (apply != 0)
     {
-        if (current_command->c == 'd')
+        while ((current_command != NULL) && (current_command->prev != NULL) && (undoBuffer > 0))
         {
-            for (int k = current_command->i1 - 1; k < modlen; ++k)
+            if (current_command->c == 'd')
             {
-                mods[k] -= current_command->i2 - current_command->i1 + 1;
+                for (int k = current_command->i1 - 1; k < modlen; ++k)
+                {
+                    mods[k] -= current_command->i2 - current_command->i1 + 1;
+                }
             }
+            current_command = current_command->prev;
+            --undoBuffer;
+            --currCommands;
         }
-        current_command = current_command->prev;
-        --i1;
     }
+    else if (currCommands - undoBuffer - i1 >= 0)
+        undoBuffer += i1;
+    else if (currCommands - undoBuffer - i1 < 0)
+        undoBuffer = currCommands;
 }
-void handleRedo()
-{ /* process redo command */
-    while ((current_command != NULL) && (current_command->next != NULL) && (i1 > 0))
+void handleRedo() /* process redo command */
+{
+    if (apply != 0)
     {
-        current_command = current_command->next;
-        if (current_command->c == 'd')
+        undoBuffer *= -1;
+        while ((current_command != NULL) && (current_command->next != NULL) && (undoBuffer > 0))
         {
-            for (int k = current_command->i1 - 1; k < modlen; ++k)
+            current_command = current_command->next;
+            if (current_command->c == 'd')
             {
-                mods[k] += current_command->i2 - current_command->i1 + 1;
+                for (int k = current_command->i1 - 1; k < modlen; ++k)
+                {
+                    mods[k] += current_command->i2 - current_command->i1 + 1;
+                }
             }
+            --undoBuffer;
+            ++currCommands;
         }
-        --i1;
     }
+    else if (currCommands - undoBuffer + i1 <= totCommands)
+        undoBuffer -= i1;
+    else if (currCommands - undoBuffer + i1 > totCommands)
+        undoBuffer = currCommands - totCommands;
 }
-void cmdToHistory()
-{ /* adds a new change or delete command to the history */
+void cmdToHistory() /* adds a new change or delete command to the history */
+{
     while (latest_command != current_command)
     {
         latest_command = latest_command->prev;
@@ -224,15 +240,28 @@ void cmdToHistory()
     latest_command->mi1 = mods[min(i1, modlen - 1)];
     latest_command->mi2 = mods[min(i2, modlen - 1)];
     current_command = latest_command;
+    ++currCommands;
+    totCommands = currCommands;
 }
-int max(int a, int b)
-{ /* returns maximum between a and b */
+void applyUndos() /* trigger application of grouped undos and redos */
+{
+    if (undoBuffer != 0)
+        apply = 1;
+    if (undoBuffer > 0)
+        handleUndo();
+    else if (undoBuffer < 0)
+        handleRedo();
+    undoBuffer = 0;
+    apply = 0;
+}
+int max(int a, int b) /* returns maximum between a and b */
+{
     if (a >= b)
         return a;
     return b;
 }
-int min(int a, int b)
-{ /* returns minimum between a and b */
+int min(int a, int b) /* returns minimum between a and b */
+{
     if (a > b)
         return b;
     return a;
