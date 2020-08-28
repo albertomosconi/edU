@@ -115,7 +115,7 @@ void handleChange()
 { /* process change command */
 
     cmdToHistory(); /* add a new command struct to the list */
-    latest_command->lines = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+    latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
@@ -143,7 +143,7 @@ void handleDelete() /* process delete command */
 }
 void handlePrint() /* process print command */
 {
-    struct StringNode **buffer = (struct StringNode **)malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+    struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     int *found = (int *)calloc((i2 - i1 + 1), sizeof(int));
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
@@ -233,10 +233,10 @@ void cmdToHistory() /* adds a new change or delete command to the history */
     }
     if (!latest_command)
     {
-        latest_command = (struct Command *)malloc(sizeof(struct Command));
+        latest_command = malloc(sizeof(struct Command));
         latest_command->prev = NULL;
     }
-    latest_command->next = (struct Command *)malloc(sizeof(struct Command));
+    latest_command->next = malloc(sizeof(struct Command));
     latest_command->next->prev = latest_command;
     latest_command = latest_command->next;
     latest_command->next = NULL;
@@ -318,7 +318,7 @@ void rotateRight(struct StringNode *n) /* rotates the string tree to the right *
 }
 struct StringNode *insertString()
 { /* gets new line from stdin and inserts in memory (if it doesn't exist already) and returns a pointer to it */
-    struct StringNode *newNode = (struct StringNode *)malloc(sizeof(struct StringNode));
+    struct StringNode *newNode = malloc(sizeof(struct StringNode));
     newNode->color = 1;
     newNode->parent = NULL;
     newNode->left = NULL;
