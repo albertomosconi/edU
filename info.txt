@@ -42,3 +42,17 @@ quando devo stampare
 7
 8
 9
+
+
+tengo in memoria un ARRAY DINAMICO con il documento intero corrente
+cosi si dovrebbe semplificare molto la print
+senza aggiungere troppa complessità forse
+
+gneh
+
+una lista di questi array di puntatori a stringhe
+
+ogni tot comandi creo un nuovo stato
+
+la print va scorre solo i comandi più recenti e se va oltre un certo numero
+si riferisce allo stato più recente
