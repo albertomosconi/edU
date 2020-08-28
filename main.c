@@ -62,7 +62,7 @@ void treeFixup(struct StringNode *n);   /* fix colors of tree */
 
 int main()
 {
-    mods = (int *)calloc(1, sizeof(int));
+    mods = calloc(1, sizeof(int));
     while (1)
     {
         getInput(); /* fetch and parse input */
@@ -129,7 +129,7 @@ void handleDelete() /* process delete command */
 
     if (i1 + current_command->mi1 > modlen)
     {
-        int *temp = (int *)calloc(i1, sizeof(int));
+        int *temp = calloc(i1, sizeof(int));
 
         for (int k = 0; k < i1; ++k)
             temp[k] = mods[min(k, modlen - 1)];
