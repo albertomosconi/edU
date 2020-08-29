@@ -66,7 +66,8 @@ int main()
     while (1)
     {
         getInput(); /* fetch and parse input */
-        switch (c)  /* handle different commands */
+        // printf("COMMAND %c\n", c);
+        switch (c) /* handle different commands */
         {
         case QUIT_C: /* terminate the program */
             return 0;
@@ -88,6 +89,10 @@ int main()
         default: /* unknown command */
             break;
         }
+        // printf("modlen: %d\n", modlen);
+        // for (int k = 0; k < modlen; ++k)
+        //     printf("%d ", mods[k]);
+        // printf("\n");
     }
     return 0;
 }
@@ -108,17 +113,17 @@ void getInput()
         i1 = -1;
         i2 = -1;
     }
-    if ((c != 'u') && (c != 'r'))
+    if ((c != 'u') && (c != 'r') && (c != '.'))
         applyUndos();
 }
-void handleChange()
-{ /* process change command */
-
+void handleChange() /* process change command */
+{
     cmdToHistory(); /* add a new command struct to the list */
     latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
+        // fputs(latest_command->lines[k]->string, stdout);
     }
     latest_command->next = NULL;
     current_command = latest_command;
@@ -127,7 +132,9 @@ void handleDelete() /* process delete command */
 {
     cmdToHistory(); /* add a new command struct to the list */
 
-    if (i1 + current_command->mi1 > modlen)
+    // printf("new del %d\n", i1 + current_command->mi1);
+
+    if (i1 >= modlen)
     {
         int *temp = calloc(i1, sizeof(int));
 
@@ -144,7 +151,7 @@ void handleDelete() /* process delete command */
 void handlePrint() /* process print command */
 {
     struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
-    int *found = (int *)calloc((i2 - i1 + 1), sizeof(int));
+    int *found = calloc((i2 - i1 + 1), sizeof(int));
     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
     int len = to_find;
 
@@ -158,9 +165,13 @@ void handlePrint() /* process print command */
                 {
                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1) && (!found[j]))
                     {
+                        // printf("PRINT\ti1: %d+%d\ti2: %d+%d\nCMD\ti1: %d+%d\t\ti2: %d+%d\n", i1, mods[min(i1 - 1, modlen - 1)], i2, mods[min(i2 - 1, modlen - 1)], curr_cmd->i1, curr_cmd->mi1, curr_cmd->i2, curr_cmd->mi2);
+                        // printf("CURR\tj: %d\t\tto_find: %d\tfound: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1, to_find, len - to_find);
+                        // printf("BUFF\tlen: %d\tj: %d\n", i2 - i1 + 1, j);
                         found[j] = 1;
                         buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1];
                         --to_find;
+                        // fputs(buffer[j]->string, stdout);
                     }
                 }
             }
@@ -323,7 +334,8 @@ struct StringNode *insertString()
     newNode->parent = NULL;
     newNode->left = NULL;
     newNode->right = NULL;
-    fgets(newNode->string, sizeof(newNode->string), stdin);
+    if (!fgets(newNode->string, sizeof(newNode->string), stdin))
+        exit(1);
 
     struct StringNode *string = NULL;
     strings = treeInsert(strings, newNode, &string);
