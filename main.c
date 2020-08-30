@@ -12,6 +12,7 @@
 #define PRINT_C 'p'
 #define UNDO_C 'u'
 #define REDO_C 'r'
+#define DEBUG /* if un-commented activates "debug mode" (lots of printfs) */
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
@@ -24,6 +25,7 @@ struct StringNode /* node in the strings tree */
 struct Command /* command object to be stored in the history stack */
 {
     struct StringNode **lines; /* list of pointers to the lines in the tree */
+    int *mod_index;            /* list of modified indexes for saved lines */
     struct Command *prev;      /* previous command in the stack*/
     struct Command *next;      /* next command in the stack */
     char c;                    /* command character */
@@ -119,20 +121,28 @@ void getInput()
 void handleChange() /* process change command */
 {
     cmdToHistory(); /* add a new command struct to the list */
+#ifdef DEBUG
+    printf("CHANGE %d TO %d\n", i1, i2);
+#endif
     latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+    latest_command->mod_index = malloc((i2 - i1 + 1) * sizeof(int));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
-        // fputs(latest_command->lines[k]->string, stdout);
+        latest_command->mod_index[k] = i1 + k + mods[min(i1 + k, modlen) - 1];
+#ifdef DEBUG
+        printf("|\t%d: %s", i1 + k + mods[min(i1 + k, modlen) - 1], latest_command->lines[k]->string);
+#endif
     }
     latest_command->next = NULL;
     current_command = latest_command;
+#ifdef DEBUG
+    printf("|_________________________________________\n");
+#endif
 }
 void handleDelete() /* process delete command */
 {
     cmdToHistory(); /* add a new command struct to the list */
-
-    // printf("new del %d\n", i1 + current_command->mi1);
 
     if (i1 >= modlen)
     {
@@ -147,47 +157,139 @@ void handleDelete() /* process delete command */
     }
     for (int k = i1 - 1; k < modlen; ++k)
         mods[k] += i2 - i1 + 1;
+#ifdef DEBUG
+    printf("DELETE %d TO %d\n|\tmods: ", i1, i2);
+    for (int k = 0; k < modlen; ++k)
+        printf("%d ", mods[k]);
+    printf("\n|_________________________________________\n");
+#endif
 }
 void handlePrint() /* process print command */
 {
-    struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
-    int *found = calloc((i2 - i1 + 1), sizeof(int));
-    int to_find = i2 - i1 + 1; /* how many elements are still to be found */
-    int len = to_find;
-
-    for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
+#ifdef DEBUG
+    printf("PRINTING LINES %d TO %d\n", i1, i2);
+#endif
+    if (i1 == 0)
+        i1 = 1;
+    if (i2 == 0)
     {
+        printf(".\n");
+        return;
+    }
+    int to_find = i2 - i1 + 1;
+    struct StringNode **buffer = calloc(to_find, sizeof(*buffer));
+    int *found = calloc(to_find, sizeof(int));
+
+    for (struct Command *curr_cmd = current_command; (curr_cmd->prev != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
+    {
+#ifdef DEBUG
+        printf(" - C: %c\tI1: %d\tI2: %d\n", curr_cmd->c, curr_cmd->i1, curr_cmd->i2);
+#endif
         if (curr_cmd->c == 'c')
         {
-            if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1))
+#ifdef DEBUG
+            printf("|\tneeded lines: ");
+            for (int j = 0; j < i2 - i1 + 1; ++j)
+                printf("%d ", i1 + j + mods[min(i1 + j, modlen) - 1]);
+            printf("\n|\tavailable %d lines: ", curr_cmd->i2 - curr_cmd->i1 + 1);
+            for (int j = 0; j < curr_cmd->i2 - curr_cmd->i1 + 1; ++j)
+                printf("%d ", curr_cmd->mod_index[j]);
+            printf("\n|\tfound: ");
+            for (int j = 0; j < i2 - i1 + 1; ++j)
+                printf("%d ", found[j]);
+            printf("\n");
+#endif
+            printf("check %d <= %d\n", i1 + mods[min(i1, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - 1]);
+            if ((i1 + mods[min(i1, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - 1]) && (i2 + mods[min(i2, modlen) - 1] >= curr_cmd->mod_index[0]))
             {
-                for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
+                for (int j = 0; j < i2 - i1 + 1; ++j)
                 {
-                    if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1) && (!found[j]))
+#ifdef DEBUG
+                    printf(" - %d %d\n", i1 + j + mods[min(i1 + j, modlen) - 1], curr_cmd->mod_index[j]);
+#endif
+                    for (int k = 0; k < curr_cmd->i2 - curr_cmd->i1 + 1; ++k)
                     {
-                        // printf("PRINT\ti1: %d+%d\ti2: %d+%d\nCMD\ti1: %d+%d\t\ti2: %d+%d\n", i1, mods[min(i1 - 1, modlen - 1)], i2, mods[min(i2 - 1, modlen - 1)], curr_cmd->i1, curr_cmd->mi1, curr_cmd->i2, curr_cmd->mi2);
-                        // printf("CURR\tj: %d\t\tto_find: %d\tfound: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1, to_find, len - to_find);
-                        // printf("BUFF\tlen: %d\tj: %d\n", i2 - i1 + 1, j);
-                        found[j] = 1;
-                        buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1];
-                        --to_find;
-                        // fputs(buffer[j]->string, stdout);
+                        if ((j < i2 - i1 + 1) && (found[j] == 0) && (i1 + j + mods[min(i1 + j, modlen) - 1] == curr_cmd->mod_index[k]))
+                        {
+#ifdef DEBUG
+                            printf(" + FOUND %d == %d\n", i1 + j + mods[min(i1 + j, modlen) - 1], curr_cmd->mod_index[k]);
+#endif
+                            found[j] = 1;
+                            buffer[j] = curr_cmd->lines[k];
+                            ++j;
+                            if (to_find == 0)
+                                break;
+                        }
                     }
+                    if (to_find == 0)
+                        break;
                 }
             }
         }
     }
+
     /* print the buffer */
-    for (int k = 0; k < len; ++k)
+    for (int k = 0; k < i2 - i1 + 1; ++k)
     {
         if (!found[k])
             fputs(".\n", stdout);
         else
             fputs(buffer[k]->string, stdout);
     }
+
     free(buffer);
     free(found);
+#ifdef DEBUG
+    printf("|_________________________________________\n");
+#endif
 }
+// void handlePrint() /* process print command */
+// {
+//     struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
+//     int *found = calloc((i2 - i1 + 1), sizeof(int));
+//     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
+//     int len = to_find;
+
+//     for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
+//     {
+//         if (curr_cmd->c == 'c')
+//         {
+//             printf("change\n");
+//             printf("i1 %d\n", i1 + mods[min(i1 - 1, modlen - 1)]);
+//             printf("i2 %d\n", i2 + mods[min(i2 - 1, modlen - 1)]);
+//             printf("Ci1 %d\n", curr_cmd->i1 + curr_cmd->mi1);
+//             printf("Ci2 %d\n", curr_cmd->i2 + curr_cmd->mi2);
+//             if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1))
+//             {
+//                 printf("if\n");
+//                 for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
+//                 {
+//                     printf("\t\tJJJJJJJJJJ %d\n", j);
+//                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1) && (!found[j]))
+//                     {
+//                         found[j] = 1;
+//                         printf("PRINT\ti1: %d+%d\ti2: %d+%d\nCMD\ti1: %d+%d\t\ti2: %d+%d\n", i1, mods[min(i1 - 1, modlen - 1)], i2, mods[min(i2 - 1, modlen - 1)], curr_cmd->i1, curr_cmd->mi1, curr_cmd->i2, curr_cmd->mi2);
+//                         printf("CURR\tj: %d\t\tto_find: %d\tfound: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1, to_find, len - to_find);
+//                         printf("BUFF\tlen: %d\tj: %d\n", i2 - i1 + 1, j);
+//                         buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
+//                         --to_find;
+//                         fputs(buffer[j]->string, stdout);
+//                     }
+//                 }
+//             }
+//         }
+//     }
+//     /* print the buffer */
+//     for (int k = 0; k < len; ++k)
+//     {
+//         if (!found[k])
+//             fputs(".\n", stdout);
+//         else
+//             fputs(buffer[k]->string, stdout);
+//     }
+//     free(buffer);
+//     free(found);
+// }
 void handleUndo() /* process undo command */
 {
     if (apply != 0)
@@ -245,6 +347,9 @@ void cmdToHistory() /* adds a new change or delete command to the history */
     if (!latest_command)
     {
         latest_command = malloc(sizeof(struct Command));
+        latest_command->c = '#';
+        latest_command->i1 = -1;
+        latest_command->i2 = -1;
         latest_command->prev = NULL;
     }
     latest_command->next = malloc(sizeof(struct Command));
