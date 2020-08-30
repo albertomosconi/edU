@@ -4,15 +4,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAX_ROW_LENGTH 250 /* maximum length of input strings */
-#define MAX_CMD_LENGTH 100 /* maximum length of cmd strings */
-#define QUIT_C 'q'
-#define CHANGE_C 'c'
-#define DELETE_C 'd'
-#define PRINT_C 'p'
-#define UNDO_C 'u'
-#define REDO_C 'r'
-// #define DEBUG /* if un-commented activates "debug mode" (lots of printfs) */
+#define MAX_ROW_LENGTH 250       /* maximum length of input strings */
+#define MAX_CMD_LENGTH 100       /* maximum length of cmd strings */
+#define SAVE_STATE_THRESHOLD 100 /* number of commands after which a snapshot of the document is saved */
+#define QUIT_C 'q'               /* quit character */
+#define CHANGE_C 'c'             /* change character */
+#define DELETE_C 'd'             /* delete character */
+#define PRINT_C 'p'              /* print character */
+#define UNDO_C 'u'               /* undo character */
+#define REDO_C 'r'               /* redo character */
+// #define DEBUG                    /* if un-commented activates "debug mode" (lots of printfs) */
+
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
@@ -40,6 +42,7 @@ int modlen = 1;                         /* stores the line number after which al
 int apply = 0;                          /* if 1 applies consecutive undos and redos at once */
 int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
 int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
+int commandCounter = 0;                 /* counts the number of commands visited by the print function */
 struct StringNode *strings = NULL;      /* red black tree containing all the strings */
 struct Command *latest_command = NULL;  /* pointer to latest command */
 struct Command *current_command = NULL; /* pointer to current command */
@@ -56,11 +59,12 @@ int min(int a, int b); /* returns minimum between a and b */
 void cmdToHistory();   /* adds a new change or delete command to the history */
 void applyUndos();     /* trigger application of grouped undos and redos */
 /* STRINGS TREE FUNCTIONS */
-struct StringNode *insertString();
-struct StringNode *treeInsert(struct StringNode *root, struct StringNode *n, struct StringNode **s);
-void rotateLeft(struct StringNode *n);  /* rotates the string tree to the left */
-void rotateRight(struct StringNode *n); /* rotates the string tree to the right */
-void treeFixup(struct StringNode *n);   /* fix colors of tree */
+struct StringNode *insertString(); /* gets new line from stdin and inserts in memory (if it doesn't exist already) and returns a pointer to it */
+struct StringNode *treeInsert(
+    struct StringNode *root, struct StringNode *n, struct StringNode **s); /* if it doesnt exist, insert n in the strings tree, save pointer to it in s */
+void rotateLeft(struct StringNode *n);                                     /* rotates the string tree to the left */
+void rotateRight(struct StringNode *n);                                    /* rotates the string tree to the right */
+void treeFixup(struct StringNode *n);                                      /* fix colors of tree */
 
 int main()
 {
@@ -68,8 +72,7 @@ int main()
     while (1)
     {
         getInput(); /* fetch and parse input */
-        // printf("COMMAND %c\n", c);
-        switch (c) /* handle different commands */
+        switch (c)  /* handle different commands */
         {
         case QUIT_C: /* terminate the program */
             return 0;
@@ -91,10 +94,6 @@ int main()
         default: /* unknown command */
             break;
         }
-        // printf("modlen: %d\n", modlen);
-        // for (int k = 0; k < modlen; ++k)
-        //     printf("%d ", mods[k]);
-        // printf("\n");
     }
     return 0;
 }
@@ -146,7 +145,7 @@ void handleDelete() /* process delete command */
     cmdToHistory(); /* add a new command struct to the list */
 
     if (i1 >= modlen)
-    {
+    { /* if the first deleted line is not in mods, make it bigger */
         int *temp = calloc(i1, sizeof(int));
 
         for (int k = 0; k < i1; ++k)
@@ -234,67 +233,21 @@ void handlePrint() /* process print command */
             fputs(buffer[k]->string, stdout);
     }
 
+    /* don't need these anymore */
     free(buffer);
     free(found);
 #ifdef DEBUG
     printf("|_________________________________________\n");
 #endif
 }
-// void handlePrint() /* process print command */
-// {
-//     struct StringNode **buffer = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
-//     int *found = calloc((i2 - i1 + 1), sizeof(int));
-//     int to_find = i2 - i1 + 1; /* how many elements are still to be found */
-//     int len = to_find;
-
-//     for (struct Command *curr_cmd = current_command; (curr_cmd != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
-//     {
-//         if (curr_cmd->c == 'c')
-//         {
-//             printf("change\n");
-//             printf("i1 %d\n", i1 + mods[min(i1 - 1, modlen - 1)]);
-//             printf("i2 %d\n", i2 + mods[min(i2 - 1, modlen - 1)]);
-//             printf("Ci1 %d\n", curr_cmd->i1 + curr_cmd->mi1);
-//             printf("Ci2 %d\n", curr_cmd->i2 + curr_cmd->mi2);
-//             if ((i1 + mods[min(i1 - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i2 + mods[min(i2 - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1))
-//             {
-//                 printf("if\n");
-//                 for (int j = 0; j < i2 + mods[min(i2 - 1, modlen - 1)] - i1 - mods[min(i1 - 1, modlen - 1)] + 1; ++j)
-//                 {
-//                     printf("\t\tJJJJJJJJJJ %d\n", j);
-//                     if ((i1 + j + mods[min(i1 + j - 1, modlen - 1)] <= curr_cmd->i2 + curr_cmd->mi2) && (i1 + j + mods[min(i1 + j - 1, modlen - 1)] >= curr_cmd->i1 + curr_cmd->mi1) && (!found[j]))
-//                     {
-//                         found[j] = 1;
-//                         printf("PRINT\ti1: %d+%d\ti2: %d+%d\nCMD\ti1: %d+%d\t\ti2: %d+%d\n", i1, mods[min(i1 - 1, modlen - 1)], i2, mods[min(i2 - 1, modlen - 1)], curr_cmd->i1, curr_cmd->mi1, curr_cmd->i2, curr_cmd->mi2);
-//                         printf("CURR\tj: %d\t\tto_find: %d\tfound: %d\n", i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1 - curr_cmd->mi1, to_find, len - to_find);
-//                         printf("BUFF\tlen: %d\tj: %d\n", i2 - i1 + 1, j);
-//                         buffer[j] = curr_cmd->lines[i1 + j + mods[min(i1 + j - 1, modlen - 1)] - curr_cmd->i1];
-//                         --to_find;
-//                         fputs(buffer[j]->string, stdout);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     /* print the buffer */
-//     for (int k = 0; k < len; ++k)
-//     {
-//         if (!found[k])
-//             fputs(".\n", stdout);
-//         else
-//             fputs(buffer[k]->string, stdout);
-//     }
-//     free(buffer);
-//     free(found);
-// }
 void handleUndo() /* process undo command */
 {
     if (apply != 0)
-    {
+    { /* apply grouped undos */
         while ((current_command != NULL) && (current_command->prev != NULL) && (undoBuffer > 0))
         {
             if (current_command->c == 'd')
-            {
+            { /* if undoing a delete command, adjust index modifiers */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
                 {
                     mods[k] -= current_command->i2 - current_command->i1 + 1;
@@ -305,21 +258,27 @@ void handleUndo() /* process undo command */
             --currCommands;
         }
     }
-    else if (currCommands - undoBuffer - i1 >= 0)
-        undoBuffer += i1;
-    else if (currCommands - undoBuffer - i1 < 0)
-        undoBuffer = currCommands;
+    else
+    { /* group undo with previous similar commands */
+        if (currCommands - undoBuffer - i1 >= 0)
+            /* if it doesn't go back before first version, add it to the buffer */
+            undoBuffer += i1;
+        else
+            /* if it goes back before first version, set the buffer to the maximum numers of permitted undos 
+            (number of commands executed until current version) */
+            undoBuffer = currCommands;
+    }
 }
 void handleRedo() /* process redo command */
 {
     if (apply != 0)
-    {
+    { /* apply grouped redos */
         undoBuffer *= -1;
         while ((current_command != NULL) && (current_command->next != NULL) && (undoBuffer > 0))
         {
             current_command = current_command->next;
             if (current_command->c == 'd')
-            {
+            { /* if redoing a delete command, adjust index modifiers */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
                 {
                     mods[k] += current_command->i2 - current_command->i1 + 1;
@@ -329,26 +288,32 @@ void handleRedo() /* process redo command */
             ++currCommands;
         }
     }
-    else if (currCommands - undoBuffer + i1 <= totCommands)
-        undoBuffer -= i1;
-    else if (currCommands - undoBuffer + i1 > totCommands)
-        undoBuffer = currCommands - totCommands;
+    else
+    { /* group redo with previous similar commands */
+        if (currCommands - undoBuffer + i1 <= totCommands)
+            /* if it doesn't go beyond latest version, subtract it from the buffer */
+            undoBuffer -= i1;
+        else /* if it goes beyond latest version, set the buffer to the maximum number of permitted redos
+            (number of commands executed between the current version and the latest) */
+            undoBuffer = currCommands - totCommands;
+    }
 }
 void cmdToHistory() /* adds a new change or delete command to the history */
 {
     while (latest_command != current_command)
-    {
+    { /* delete undone commands, start new branch */
         latest_command = latest_command->prev;
         free(latest_command->next);
     }
     if (!latest_command)
-    {
+    { /* if command history is empty, add blank command */
         latest_command = malloc(sizeof(struct Command));
         latest_command->c = '#';
         latest_command->i1 = -1;
         latest_command->i2 = -1;
         latest_command->prev = NULL;
     }
+    /* add command to history */
     latest_command->next = malloc(sizeof(struct Command));
     latest_command->next->prev = latest_command;
     latest_command = latest_command->next;
