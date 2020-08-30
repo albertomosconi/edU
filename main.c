@@ -1,18 +1,19 @@
 /* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
  * 2019-2020, Politecnico di Milano
  * Alberto Mosconi */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAX_ROW_LENGTH 250       /* maximum length of input strings */
-#define MAX_CMD_LENGTH 100       /* maximum length of cmd strings */
-#define SAVE_STATE_THRESHOLD 100 /* number of commands after which a snapshot of the document is saved */
-#define QUIT_C 'q'               /* quit character */
-#define CHANGE_C 'c'             /* change character */
-#define DELETE_C 'd'             /* delete character */
-#define PRINT_C 'p'              /* print character */
-#define UNDO_C 'u'               /* undo character */
-#define REDO_C 'r'               /* redo character */
+#define MAX_ROW_LENGTH 250     /* maximum length of input strings */
+#define MAX_CMD_LENGTH 100     /* maximum length of cmd strings */
+#define SNAPSHOT_THRESHOLD 100 /* number of commands after which a snapshot of the document is saved */
+#define QUIT_C 'q'             /* quit character */
+#define CHANGE_C 'c'           /* change character */
+#define DELETE_C 'd'           /* delete character */
+#define PRINT_C 'p'            /* print character */
+#define UNDO_C 'u'             /* undo character */
+#define REDO_C 'r'             /* redo character */
 // #define DEBUG                    /* if un-commented activates "debug mode" (lots of printfs) */
 
 /* STRUCTURES */
@@ -24,7 +25,7 @@ struct StringNode /* node in the strings tree */
     int color;                   /* node color, 1->red, 0->black */
     char string[MAX_ROW_LENGTH]; /* string contents */
 };
-struct Command /* command object to be stored in the history stack */
+struct Command /* command node to be stored in the history stack */
 {
     struct StringNode **lines; /* list of pointers to the lines in the tree */
     int *mod_index;            /* list of modified indexes for saved lines */
@@ -32,6 +33,13 @@ struct Command /* command object to be stored in the history stack */
     struct Command *next;      /* next command in the stack */
     char c;                    /* command character */
     int i1, i2, mi1, mi2;      /* original indexes and modified indexes */
+};
+struct Snapshot /* state of the document */
+{
+    struct Snapshot *prev; /* previous snapshot */
+    struct Snapshot *next; /* next snapshot */
+    char **document;       /* array of the document strings */
+    int length;            /* total number of lines */
 };
 /* GENERAL VARIABLES */
 char raw_cmd[MAX_CMD_LENGTH];           /* command buffer */
@@ -43,6 +51,7 @@ int apply = 0;                          /* if 1 applies consecutive undos and re
 int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
 int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
 int commandCounter = 0;                 /* counts the number of commands visited by the print function */
+int documentLength = 0;                 /* total number of lines in the document */
 struct StringNode *strings = NULL;      /* red black tree containing all the strings */
 struct Command *latest_command = NULL;  /* pointer to latest command */
 struct Command *current_command = NULL; /* pointer to current command */
