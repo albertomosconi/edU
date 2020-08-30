@@ -50,11 +50,12 @@ int modlen = 1;                         /* stores the line number after which al
 int apply = 0;                          /* if 1 applies consecutive undos and redos at once */
 int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
 int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
-int commandCounter = 0;                 /* counts the number of commands visited by the print function */
 int documentLength = 0;                 /* total number of lines in the document */
 struct StringNode *strings = NULL;      /* red black tree containing all the strings */
 struct Command *latest_command = NULL;  /* pointer to latest command */
 struct Command *current_command = NULL; /* pointer to current command */
+struct Snapshot *latest_state = NULL;   /* pointer to latest document state snapshot */
+struct Snapshot *current_state = NULL;  /* pointer to current document state snapshot */
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -63,10 +64,13 @@ void handlePrint();  /* process print command */
 void handleUndo();   /* process undo command */
 void handleRedo();   /* process redo command */
 /* HELPER FUNCTIONS */
-int max(int a, int b); /* returns maximum between a and b */
-int min(int a, int b); /* returns minimum between a and b */
-void cmdToHistory();   /* adds a new change or delete command to the history */
-void applyUndos();     /* trigger application of grouped undos and redos */
+int max(int a, int b);                                                  /* returns maximum between a and b */
+int min(int a, int b);                                                  /* returns minimum between a and b */
+void findLines(int a, int b, struct StringNode ***buffer, int **found); /* returns array of lines between two indexes */
+void documentInit();                                                    /* initialize document */
+void cmdToHistory();                                                    /* adds a new change or delete command to the history */
+void saveDocumentState();                                               /* save a copy of the document state */
+void applyUndos();                                                      /* trigger application of grouped undos and redos */
 /* STRINGS TREE FUNCTIONS */
 struct StringNode *insertString(); /* gets new line from stdin and inserts in memory (if it doesn't exist already) and returns a pointer to it */
 struct StringNode *treeInsert(
@@ -77,7 +81,7 @@ void treeFixup(struct StringNode *n);                                      /* fi
 
 int main()
 {
-    mods = calloc(1, sizeof(int));
+    documentInit();
     while (1)
     {
         getInput(); /* fetch and parse input */
@@ -178,61 +182,12 @@ void handlePrint() /* process print command */
 #ifdef DEBUG
     printf("PRINTING LINES %d TO %d\n", i1, i2);
 #endif
-    if (i1 == 0)
-        i1 = 1;
-    if (i2 == 0)
-    {
-        printf(".\n");
-        return;
-    }
     int to_find = i2 - i1 + 1;
     struct StringNode **buffer = calloc(to_find, sizeof(*buffer));
     int *found = calloc(to_find, sizeof(int));
 
-    for (struct Command *curr_cmd = current_command; (curr_cmd->prev != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
-    {
-#ifdef DEBUG
-        printf(" - C: %c\tI1: %d\tI2: %d\n", curr_cmd->c, curr_cmd->i1, curr_cmd->i2);
-#endif
-        if (curr_cmd->c == 'c')
-        {
-#ifdef DEBUG
-            printf("|\tneeded lines: ");
-            for (int j = 0; j < i2 - i1 + 1; ++j)
-                printf("%d ", i1 + j + mods[min(i1 + j, modlen) - 1]);
-            printf("\n|\tavailable %d lines: ", curr_cmd->i2 - curr_cmd->i1 + 1);
-            for (int j = 0; j < curr_cmd->i2 - curr_cmd->i1 + 1; ++j)
-                printf("%d ", curr_cmd->mod_index[j]);
-            printf("\n|\tfound: ");
-            for (int j = 0; j < i2 - i1 + 1; ++j)
-                printf("%d ", found[j]);
-            printf("\n");
-            printf("check %d <= %d %d\n", i1 + mods[min(i1, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1], curr_cmd->i2);
-#endif
-            if ((i1 + mods[min(i1, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1]) && (i2 + mods[min(i2, modlen) - 1] >= curr_cmd->mod_index[0]))
-            {
-                for (int j = 0; (j < i2 - i1 + 1) && (to_find > 0); ++j)
-                {
-#ifdef DEBUG
-                    printf(" - %d %d\n", i1 + j + mods[min(i1 + j, modlen) - 1], curr_cmd->mod_index[j]);
-#endif
-                    for (int k = 0; (k < curr_cmd->i2 - curr_cmd->i1 + 1) && (to_find > 0); ++k)
-                    {
-                        if ((j < i2 - i1 + 1) && (found[j] == 0) && (i1 + j + mods[min(i1 + j, modlen) - 1] == curr_cmd->mod_index[k]))
-                        {
-#ifdef DEBUG
-                            printf(" + FOUND %d == %d\n", i1 + j + mods[min(i1 + j, modlen) - 1], curr_cmd->mod_index[k]);
-#endif
-                            found[j] = 1;
-                            buffer[j] = curr_cmd->lines[k];
-                            ++j;
-                            --to_find;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    findLines(i1, i2, &buffer, &found);
+
     /* print the buffer */
     for (int k = 0; k < i2 - i1 + 1; ++k)
     {
@@ -307,23 +262,82 @@ void handleRedo() /* process redo command */
             undoBuffer = currCommands - totCommands;
     }
 }
+void findLines(int a, int b, struct StringNode ***buffer, int **found) /* returns array of lines between two indexes */
+{
+    int to_find = b - a + 1;
+
+    for (struct Command *curr_cmd = current_command; (curr_cmd->prev != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
+    {
+#ifdef DEBUG
+        printf(" - C: %c\tI1: %d\tI2: %d\n", curr_cmd->c, curr_cmd->i1, curr_cmd->i2);
+#endif
+        if (curr_cmd->c == 'c')
+        {
+#ifdef DEBUG
+            printf("|\tneeded lines: ");
+            for (int j = 0; j < b - a + 1; ++j)
+                printf("%d ", a + j + mods[min(a + j, modlen) - 1]);
+            printf("\n|\tavailable %d lines: ", curr_cmd->i2 - curr_cmd->i1 + 1);
+            for (int j = 0; j < curr_cmd->i2 - curr_cmd->i1 + 1; ++j)
+                printf("%d ", curr_cmd->mod_index[j]);
+            printf("\n|\tfound: ");
+            for (int j = 0; j < b - a + 1; ++j)
+                printf("%d ", (*found)[j]);
+            printf("\n");
+            printf("check %d <= %d %d\n", a + mods[min(a, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1], curr_cmd->i2);
+#endif
+            if ((a + mods[min(a, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1]) && (b + mods[min(b, modlen) - 1] >= curr_cmd->mod_index[0]))
+            {
+                for (int j = 0; (j < b - a + 1) && (to_find > 0); ++j)
+                {
+#ifdef DEBUG
+                    printf(" - %d %d\n", a + j + mods[min(a + j, modlen) - 1], curr_cmd->mod_index[j]);
+#endif
+                    for (int k = 0; (k < curr_cmd->i2 - curr_cmd->i1 + 1) && (to_find > 0); ++k)
+                    {
+                        if ((j < b - a + 1) && ((*found)[j] == 0) && (a + j + mods[min(a + j, modlen) - 1] == curr_cmd->mod_index[k]))
+                        {
+#ifdef DEBUG
+                            printf(" + FOUND %d == %d\n", a + j + mods[min(a + j, modlen) - 1], curr_cmd->mod_index[k]);
+#endif
+                            (*found)[j] = 1;
+                            (*buffer)[j] = curr_cmd->lines[k];
+                            ++j;
+                            --to_find;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+void documentInit() /* initialize document */
+{
+    /*  initialize index modifiers array */
+    mods = calloc(1, sizeof(int));
+    /* initialize command history */
+    latest_command = malloc(sizeof(*latest_command));
+    latest_command->c = '#';
+    latest_command->i1 = -1;
+    latest_command->i2 = -1;
+    latest_command->prev = NULL;
+    current_command = latest_command;
+    /* initialize document state history */
+    latest_state = malloc(sizeof(*latest_state));
+    latest_state->length = -1;
+    latest_state->prev = NULL;
+    current_state = latest_state;
+}
 void cmdToHistory() /* adds a new change or delete command to the history */
 {
+    /* delete undone commands, start new branch */
     while (latest_command != current_command)
-    { /* delete undone commands, start new branch */
+    {
         latest_command = latest_command->prev;
         free(latest_command->next);
     }
-    if (!latest_command)
-    { /* if command history is empty, add blank command */
-        latest_command = malloc(sizeof(struct Command));
-        latest_command->c = '#';
-        latest_command->i1 = -1;
-        latest_command->i2 = -1;
-        latest_command->prev = NULL;
-    }
     /* add command to history */
-    latest_command->next = malloc(sizeof(struct Command));
+    latest_command->next = malloc(sizeof(*latest_command));
     latest_command->next->prev = latest_command;
     latest_command = latest_command->next;
     latest_command->next = NULL;
@@ -335,6 +349,25 @@ void cmdToHistory() /* adds a new change or delete command to the history */
     current_command = latest_command;
     ++currCommands;
     totCommands = currCommands;
+    /* threshold is reached, create new state snapshot */
+    if (currCommands % SNAPSHOT_THRESHOLD == 0)
+        saveDocumentState();
+}
+void saveDocumentState() /* save a copy of the document state */
+{
+    latest_state->next = malloc(sizeof(*current_state));
+    latest_state->next->prev = current_state;
+    latest_state = latest_state->next;
+    latest_state->length = documentLength;
+    latest_state->document = malloc(documentLength * sizeof(char *));
+
+    struct StringNode **buffer = calloc(documentLength, sizeof(*buffer));
+    int *found = calloc(documentLength, sizeof(int));
+
+    findLines(1, documentLength, &buffer, &found);
+
+    free(buffer);
+    free(found);
 }
 void applyUndos() /* trigger application of grouped undos and redos */
 {
