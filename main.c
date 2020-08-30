@@ -12,7 +12,7 @@
 #define PRINT_C 'p'
 #define UNDO_C 'u'
 #define REDO_C 'r'
-#define DEBUG /* if un-commented activates "debug mode" (lots of printfs) */
+// #define DEBUG /* if un-commented activates "debug mode" (lots of printfs) */
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
@@ -131,6 +131,7 @@ void handleChange() /* process change command */
         latest_command->lines[k] = insertString();
         latest_command->mod_index[k] = i1 + k + mods[min(i1 + k, modlen) - 1];
 #ifdef DEBUG
+        printf("\nMOD INDEX %d\n\n", latest_command->mod_index[k]);
         printf("|\t%d: %s", i1 + k + mods[min(i1 + k, modlen) - 1], latest_command->lines[k]->string);
 #endif
     }
@@ -198,16 +199,16 @@ void handlePrint() /* process print command */
             for (int j = 0; j < i2 - i1 + 1; ++j)
                 printf("%d ", found[j]);
             printf("\n");
+            printf("check %d <= %d %d\n", i1 + mods[min(i1, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1], curr_cmd->i2);
 #endif
-            printf("check %d <= %d\n", i1 + mods[min(i1, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - 1]);
-            if ((i1 + mods[min(i1, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - 1]) && (i2 + mods[min(i2, modlen) - 1] >= curr_cmd->mod_index[0]))
+            if ((i1 + mods[min(i1, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1]) && (i2 + mods[min(i2, modlen) - 1] >= curr_cmd->mod_index[0]))
             {
-                for (int j = 0; j < i2 - i1 + 1; ++j)
+                for (int j = 0; (j < i2 - i1 + 1) && (to_find > 0); ++j)
                 {
 #ifdef DEBUG
                     printf(" - %d %d\n", i1 + j + mods[min(i1 + j, modlen) - 1], curr_cmd->mod_index[j]);
 #endif
-                    for (int k = 0; k < curr_cmd->i2 - curr_cmd->i1 + 1; ++k)
+                    for (int k = 0; (k < curr_cmd->i2 - curr_cmd->i1 + 1) && (to_find > 0); ++k)
                     {
                         if ((j < i2 - i1 + 1) && (found[j] == 0) && (i1 + j + mods[min(i1 + j, modlen) - 1] == curr_cmd->mod_index[k]))
                         {
@@ -217,17 +218,13 @@ void handlePrint() /* process print command */
                             found[j] = 1;
                             buffer[j] = curr_cmd->lines[k];
                             ++j;
-                            if (to_find == 0)
-                                break;
+                            --to_find;
                         }
                     }
-                    if (to_find == 0)
-                        break;
                 }
             }
         }
     }
-
     /* print the buffer */
     for (int k = 0; k < i2 - i1 + 1; ++k)
     {
