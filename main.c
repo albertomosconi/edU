@@ -232,6 +232,9 @@ void handleUndo() /* process undo command */
                     mods[k] -= current_command->i2 - current_command->i1 + 1;
                 }
             }
+            if ((current_state != NULL) && (currCommands != totCommands) && ((currCommands + 1) % SNAPSHOT_THRESHOLD == 0))
+                current_state = current_state->prev;
+
             current_command = current_command->prev;
             --undoBuffer;
             --currCommands;
@@ -263,6 +266,9 @@ void handleRedo() /* process redo command */
                     mods[k] += current_command->i2 - current_command->i1 + 1;
                 }
             }
+            if ((current_state != latest_state) && (currCommands != totCommands) && (currCommands % SNAPSHOT_THRESHOLD == 0))
+                current_state = current_state->next;
+
             --undoBuffer;
             ++currCommands;
         }
@@ -402,10 +408,9 @@ void saveDocumentState() /* save a copy of the document state */
 #ifdef DEBUG
     printf("THRESHOLD REACHED\nsaving document state...\n");
 #endif
-    latest_state->next = malloc(sizeof(*current_state));
+    latest_state->next = malloc(sizeof(*latest_state));
     latest_state->next->prev = current_state;
     latest_state = latest_state->next;
-    latest_state->prev = NULL;
     latest_state->length = documentLength;
     latest_state->document = malloc(documentLength * sizeof(*(latest_state->document)));
     current_state = latest_state;

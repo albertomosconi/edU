@@ -31,4 +31,7 @@ riga dieci
 4,5c
 hehe
 ciao
+3u
+1,10p
+2r
 1,10p
