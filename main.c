@@ -14,6 +14,7 @@
 #define PRINT_C 'p'          /* print character */
 #define UNDO_C 'u'           /* undo character */
 #define REDO_C 'r'           /* redo character */
+#define TERM_C '.'           /* termination character */
 // #define DEBUG                /* if un-commented activates "debug mode" (lots of printfs) */
 
 /* STRUCTURES */
@@ -129,7 +130,7 @@ void getInput()
         i1 = -1;
         i2 = -1;
     }
-    if ((c != 'u') && (c != 'r') && (c != '.'))
+    if ((c != UNDO_C) && (c != REDO_C) && (c != QUIT_C) && (c != TERM_C))
         applyUndos();
 }
 void handleChange() /* process change command */
@@ -229,6 +230,7 @@ void handlePrint() /* process print command */
             b = documentLength;
 
         struct StringNode **buffer = malloc((b - i1 + 1) * sizeof(*buffer));
+        // printf("PRINT %d TO %d\n", i1, b);
         findLines(i1, b, &buffer);
 
         for (int k = 0; k < b - i1 + 1; ++k)
@@ -252,7 +254,7 @@ void handleUndo() /* process undo command */
     { /* apply grouped undos */
         while ((current_command != NULL) && (current_command->prev != NULL) && (undoBuffer > 0))
         {
-            if ((current_command->c == 'd') && (current_command->i1 != -1))
+            if ((current_command->c == DELETE_C) && (current_command->i1 != -1))
             { /* if undoing a delete command, adjust index modifiers */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
                     mods[k] -= current_command->i2 - current_command->i1 + 1;
@@ -285,8 +287,7 @@ void handleRedo() /* process redo command */
         undoBuffer *= -1;
         while ((current_command != NULL) && (current_command->next != NULL) && (undoBuffer > 0))
         {
-            current_command = current_command->next;
-            if ((current_command->c == 'd') && (current_command->i1 != -1))
+            if ((current_command->c == DELETE_C) && (current_command->i1 != -1))
             { /* if redoing a delete command, adjust index modifiers */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
                 {
@@ -296,7 +297,13 @@ void handleRedo() /* process redo command */
             // if ((current_state != latest_state) && (currCommands != totCommands) && (currCommands % SNAPSHOT_THRESHOLD == 0))
             //     current_state = current_state->next;
 
-            documentLength = current_command->oldDocumentLength;
+            current_command = current_command->next;
+
+            if (current_command->i2 > current_command->oldDocumentLength)
+                documentLength = current_command->i2;
+            else
+                documentLength = current_command->oldDocumentLength;
+
             --undoBuffer;
             ++currCommands;
         }
@@ -345,7 +352,7 @@ void findLines(int a, int b, struct StringNode ***buffer) /* returns array of li
         //     else
         //         savingState = 0;
         // }
-        if (curr_cmd->c == 'c')
+        if (curr_cmd->c == CHANGE_C)
         {
 #ifdef DEBUG
             printf("|\tneeded lines: ");
@@ -386,7 +393,7 @@ void findLines(int a, int b, struct StringNode ***buffer) /* returns array of li
             }
         }
     }
-    for (int k = 0; k < i2 - i1 + 1; ++k)
+    for (int k = 0; k < b - a + 1; ++k)
         if (!found[k])
             (*buffer)[k] = NULL;
 }
@@ -405,6 +412,7 @@ void documentInit() /* initialize document */
     latest_command->c = '#';
     latest_command->i1 = -1;
     latest_command->i2 = -1;
+    latest_command->oldDocumentLength = 0;
     latest_command->prev = NULL;
     current_command = latest_command;
 #ifdef DEBUG
