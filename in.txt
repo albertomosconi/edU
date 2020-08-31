@@ -1,0 +1,34 @@
+1,2c
+uno
+due
+3,4c
+tre
+quattro
+5,6c
+cinque
+sei
+7,8c
+sette
+otto
+9,10c
+nove
+dieci
+1,2c
+riga uno
+riga due
+3,4c
+riga tre
+riga quattro
+5,6c
+riga cinque
+riga sei
+7,8c
+riga sette
+riga otto
+9,10c
+riga nove
+riga dieci
+4,5c
+hehe
+ciao
+1,10p
