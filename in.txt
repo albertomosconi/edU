@@ -13,9 +13,9 @@ otto
 9,10c
 nove
 dieci
-1,2c
-riga uno
-riga due
+11,12c
+riga undici
+riga dodici
 3,4c
 riga tre
 riga quattro
@@ -31,7 +31,4 @@ riga dieci
 4,5c
 hehe
 ciao
-3u
-1,10p
-2r
 1,10p
