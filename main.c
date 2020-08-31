@@ -139,8 +139,8 @@ void handleChange() /* process change command */
 #ifdef DEBUG
     printf("CHANGE %d TO %d\n", i1, i2);
 #endif
-    latest_command->lines = malloc((i2 - i1 + 1) * sizeof(struct StringNode *));
-    latest_command->mod_index = malloc((i2 - i1 + 1) * sizeof(int));
+    latest_command->lines = malloc((i2 - i1 + 1) * sizeof(*(latest_command->lines)));
+    latest_command->mod_index = malloc((i2 - i1 + 1) * sizeof(*(latest_command->mod_index)));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
@@ -287,6 +287,7 @@ void handleRedo() /* process redo command */
         undoBuffer *= -1;
         while ((current_command != NULL) && (current_command->next != NULL) && (undoBuffer > 0))
         {
+            current_command = current_command->next;
             if ((current_command->c == DELETE_C) && (current_command->i1 != -1))
             { /* if redoing a delete command, adjust index modifiers */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
@@ -296,8 +297,6 @@ void handleRedo() /* process redo command */
             }
             // if ((current_state != latest_state) && (currCommands != totCommands) && (currCommands % SNAPSHOT_THRESHOLD == 0))
             //     current_state = current_state->next;
-
-            current_command = current_command->next;
 
             if (current_command->i2 > current_command->oldDocumentLength)
                 documentLength = current_command->i2;
