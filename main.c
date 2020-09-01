@@ -1,6 +1,7 @@
 /* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
  * 2019-2020, Politecnico di Milano
  * Alberto Mosconi */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -112,16 +113,19 @@ void getInput()
         exit(1); /* if fail stop program */
 
     int success = sscanf(raw_cmd, "%d,%d%c", &i1, &i2, &c);
-    if (1 == success)
-    { /* with only one digits it's either undo or redo */
+    switch (success)
+    {
+    case 1: /* with only one digits it's either undo or redo */
         sscanf(raw_cmd, "%d%c", &i1, &c);
         i2 = -1;
-    }
-    else if (0 == success)
-    { /* only one character, it's 'q' or '.' */
+        break;
+    case 0: /* only one character, it's 'q' or '.' */
         sscanf(raw_cmd, "%c", &c);
         i1 = -1;
         i2 = -1;
+        break;
+    default:
+        break;
     }
     if ((c != UNDO_C) && (c != REDO_C) && (c != QUIT_C) && (c != TERM_C))
         applyUndos();
@@ -150,7 +154,6 @@ void handleDelete() /* process delete command */
     {
         if (i1 >= modlen)
         { /* if the first deleted line is not in mods, make it bigger and copy old values */
-
             if (i1 > modsBufferSize)
             {
                 modsBufferSize = max(i1, modsBufferSize * REALLOC_FACTOR);
