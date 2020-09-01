@@ -154,24 +154,20 @@ void handleDelete() /* process delete command */
             free(mods);
             mods = temp;
         }
-        if (i2 <= documentLength)
-            for (int k = i1 - 1; k < modlen; ++k)
-                /* update new values */
-                mods[k] += i2 - i1 + 1;
-        else
-        {
-            for (int k = i1 - 1; k < modlen; ++k)
-            { /* update new values */
-                mods[k] += documentLength - i1 + 1;
-                current_command->i2 = documentLength;
-            }
-        }
-
-        /* update document length */
+        int b = i2;
         if (i2 > documentLength)
+        { /* if deleting lines beyond end of document, adjust to delete until last one */
+            b = documentLength;
+            current_command->i2 = documentLength;
+            /* update document length */
             documentLength -= (i2 - i1 + 1 - i2 + documentLength);
-        else
+        }
+        else /* update document length */
             documentLength -= i2 - i1 + 1;
+
+        for (int k = i1 - 1; k < modlen; ++k)
+            /* update new values */
+            mods[k] += b - i1 + 1;
     }
     else
         current_command->i1 = -1;
