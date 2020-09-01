@@ -113,9 +113,8 @@ void getInput()
     {
         ++i;
         raw_cmd[i] = getchar_unlocked();
-    }
-    while(raw_cmd[i]!='\n');
-    raw_cmd[i+1]='\0';
+    } while ((i < MAX_CMD_LENGTH - 1) && (raw_cmd[i] != '\n'));
+    raw_cmd[i + 1] = '\0';
 
     int success = sscanf(raw_cmd, "%d,%d%c", &i1, &i2, &c);
     switch (success)
@@ -159,6 +158,7 @@ void handleDelete() /* process delete command */
     {
         if (i1 >= modlen)
         { /* if the first deleted line is not in mods, make it bigger and copy old values */
+
             if (i1 > modsBufferSize)
             {
                 modsBufferSize = max(i1, modsBufferSize * REALLOC_FACTOR);
