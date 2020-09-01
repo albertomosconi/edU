@@ -75,21 +75,11 @@ void rotateLeft(struct StringNode *n);                                     /* ro
 void rotateRight(struct StringNode *n);                                    /* rotates the string tree to the right */
 void treeFixup(struct StringNode *n);                                      /* fix colors of tree */
 
-void fastInput()
-{
-    char cin;
-    while (cin = getchar_unlocked())
-    {
-        printf("%c\n", cin);
-    }
-}
-
 int main()
 {
     documentInit();
     while (1)
     {
-        fastInput();
         getInput(); /* fetch and parse input */
         switch (c)  /* handle different commands */
         {
@@ -118,8 +108,14 @@ int main()
 }
 void getInput()
 { /* receive and parse input commands from stdin */
-    if (!fgets(raw_cmd, sizeof(raw_cmd), stdin))
-        exit(1); /* if fail stop program */
+    int i = -1;
+    do
+    {
+        ++i;
+        raw_cmd[i] = getchar_unlocked();
+    }
+    while(raw_cmd[i]!='\n');
+    raw_cmd[i+1]='\0';
 
     int success = sscanf(raw_cmd, "%d,%d%c", &i1, &i2, &c);
     switch (success)
