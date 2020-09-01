@@ -1,7 +1,6 @@
 /* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
  * 2019-2020, Politecnico di Milano
  * Alberto Mosconi */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,8 +14,6 @@
 #define UNDO_C 'u'           /* undo character */
 #define REDO_C 'r'           /* redo character */
 #define TERM_C '.'           /* termination character */
-// #define DEBUG                /* if un-commented activates "debug mode" (lots of printfs) */
-
 /* STRUCTURES */
 struct StringNode /* node in the strings tree */
 {
@@ -36,29 +33,21 @@ struct Command /* command node to be stored in the history stack */
     int oldDocumentLength;     /* length of document before application of command */
     char c;                    /* command character */
 };
-struct Snapshot /* state of the document */
-{
-    struct Snapshot *prev;        /* previous snapshot */
-    struct Snapshot *next;        /* next snapshot */
-    struct StringNode **document; /* array of the document strings */
-    int length;                   /* total number of lines */
-};
 /* GENERAL VARIABLES */
-char raw_cmd[MAX_CMD_LENGTH];          /* command buffer */
-char c;                                /* command character [q, c, d, p, u, r] */
-int i1, i2;                            /* line indexes specified in the command */
-int *mods = NULL;                      /* array of modifiers */
-int modlen = 1;                        /* stores the line number after which all mod values are the same */
-int apply = 0;                         /* if 1 applies consecutive undos and redos at once */
-int undoBuffer = 0;                    /* when positive -> how many undos to apply, when negative -> redos */
-int totCommands = 0, currCommands = 0; /* tot number of commands executed and current number of commands */
-int documentLength = 0;                /* total number of lines in the document */
-int savingState = 0;
-struct StringNode *strings = NULL;      /* red black tree containing all the strings */
+char raw_cmd[MAX_CMD_LENGTH];           /* command buffer */
+char c;                                 /* command character [q, c, d, p, u, r] */
+int i1, i2;                             /* line indexes specified in the command */
+int *mods = NULL;                       /* array of modifiers */
+int modlen = 1;                         /* stores the line number after which all mod values are the same */
+int apply = 0;                          /* if 1 applies consecutive undos and redos at once */
+int undoBuffer = 0;                     /* when positive -> how many undos to apply, when negative -> redos */
+int totCommands = 0, currCommands = 0;  /* tot number of commands executed and current number of commands */
+int documentLength = 0;                 /* total number of lines in the document */
+int printBufferSize = 0;                /* size of print buffer */
+struct StringNode **printBuffer = NULL; /* array to hold pointers to the strings to print; */
+struct StringNode *strings = NULL;      /* root of red black tree containing all the strings */
 struct Command *latest_command = NULL;  /* pointer to latest command */
 struct Command *current_command = NULL; /* pointer to current command */
-struct Snapshot *latest_state = NULL;   /* pointer to latest document state snapshot */
-struct Snapshot *current_state = NULL;  /* pointer to current document state snapshot */
 /* MAIN FUNCTIONS */
 void getInput();     /* receive and parse input commands from stdin */
 void handleChange(); /* process change command */
@@ -72,7 +61,6 @@ int min(int a, int b);                                     /* returns minimum be
 void findLines(int a, int b, struct StringNode ***buffer); /* returns array of lines between two indexes */
 void documentInit();                                       /* initialize document */
 void cmdToHistory();                                       /* adds a new change or delete command to the history */
-void saveDocumentState();                                  /* save a copy of the document state */
 void applyUndos();                                         /* trigger application of grouped undos and redos */
 /* STRINGS TREE FUNCTIONS */
 struct StringNode *insertString(); /* gets new line from stdin and inserts in memory (if it doesn't exist already) and returns a pointer to it */
@@ -136,19 +124,12 @@ void getInput()
 void handleChange() /* process change command */
 {
     cmdToHistory(); /* add a new command struct to the list */
-#ifdef DEBUG
-    printf("CHANGE %d TO %d\n", i1, i2);
-#endif
     latest_command->lines = malloc((i2 - i1 + 1) * sizeof(*(latest_command->lines)));
     latest_command->mod_index = malloc((i2 - i1 + 1) * sizeof(*(latest_command->mod_index)));
     for (int k = 0; k < i2 - i1 + 1; ++k)
     { /* insert the new content */
         latest_command->lines[k] = insertString();
         latest_command->mod_index[k] = i1 + k + mods[min(i1 + k, modlen) - 1];
-#ifdef DEBUG
-        printf("\nMOD INDEX %d\n\n", latest_command->mod_index[k]);
-        printf("|\t%d: %s", i1 + k + mods[min(i1 + k, modlen) - 1], latest_command->lines[k]->string);
-#endif
     }
     latest_command->next = NULL;
     current_command = latest_command;
@@ -156,18 +137,10 @@ void handleChange() /* process change command */
     /* update document length */
     if (i2 > documentLength)
         documentLength = i2;
-
-        /* threshold is reached, create new state snapshot */
-        // if (currCommands % SNAPSHOT_THRESHOLD == 0)
-        //     saveDocumentState();
-#ifdef DEBUG
-    printf("|_________________________________________\n");
-#endif
 }
 void handleDelete() /* process delete command */
 {
     cmdToHistory(); /* add a new command struct to the list */
-
     if (i1 <= documentLength)
     {
         if (i1 >= modlen)
@@ -201,52 +174,34 @@ void handleDelete() /* process delete command */
             documentLength -= i2 - i1 + 1;
     }
     else
-    {
         current_command->i1 = -1;
-    }
-
-    /* threshold is reached, create new state snapshot */
-    // if (currCommands % SNAPSHOT_THRESHOLD == 0)
-    //     saveDocumentState();
-#ifdef DEBUG
-    printf("DELETE %d TO %d\n|\tmods: ", i1, i2);
-    for (int k = 0; k < modlen; ++k)
-        printf("%d ", mods[k]);
-    printf("\n|_________________________________________\n");
-#endif
 }
 void handlePrint() /* process print command */
 {
-#ifdef DEBUG
-    printf("PRINTING LINES %d TO %d\n", i1, i2);
-#endif
     if (i1 > documentLength)
         for (int k = 0; k < i2 - i1 + 1; ++k)
             fputs(".\n", stdout);
-    else /* print the buffer */
-    {
+    else
+    { /* print the buffer */
         int b = i2;
         if (i2 > documentLength)
             b = documentLength;
 
-        struct StringNode **buffer = malloc((b - i1 + 1) * sizeof(*buffer));
-        // printf("PRINT %d TO %d\n", i1, b);
-        findLines(i1, b, &buffer);
+        if (b - i1 + 1 > printBufferSize)
+        {
+            printBufferSize = i2 - i1 + 1;
+            printBuffer = realloc(printBuffer, printBufferSize * sizeof(*printBuffer));
+        }
+        findLines(i1, b, &printBuffer);
 
         for (int k = 0; k < b - i1 + 1; ++k)
-            if (buffer[k] == NULL)
+            if (printBuffer[k] == NULL)
                 fputs(".\n", stdout);
             else
-                fputs(buffer[k]->string, stdout);
+                fputs(printBuffer[k]->string, stdout);
         for (int k = 0; k < i2 - b; ++k)
             fputs(".\n", stdout);
-        /* don't need this anymore */
-        free(buffer);
     }
-
-#ifdef DEBUG
-    printf("|_________________________________________\n");
-#endif
 }
 void handleUndo() /* process undo command */
 {
@@ -259,10 +214,6 @@ void handleUndo() /* process undo command */
                 for (int k = current_command->i1 - 1; k < modlen; ++k)
                     mods[k] -= current_command->i2 - current_command->i1 + 1;
             }
-
-            // if ((current_state != NULL) && (currCommands != totCommands) && ((currCommands + 1) % SNAPSHOT_THRESHOLD == 0))
-            //     current_state = current_state->prev;
-
             documentLength = current_command->oldDocumentLength;
             current_command = current_command->prev;
             --undoBuffer;
@@ -295,9 +246,6 @@ void handleRedo() /* process redo command */
                     mods[k] += current_command->i2 - current_command->i1 + 1;
                 }
             }
-            // if ((current_state != latest_state) && (currCommands != totCommands) && (currCommands % SNAPSHOT_THRESHOLD == 0))
-            //     current_state = current_state->next;
-
             if (current_command->i2 > current_command->oldDocumentLength)
                 documentLength = current_command->i2;
             else
@@ -321,67 +269,21 @@ void findLines(int a, int b, struct StringNode ***buffer) /* returns array of li
 {
     int to_find = b - a + 1;
     int *found = calloc(to_find, sizeof(*found));
-    // int nodesVisited = -1; /* number of previously visited nodes */
 
     for (struct Command *curr_cmd = current_command; (curr_cmd->prev != NULL) && (to_find > 0); curr_cmd = curr_cmd->prev)
     {
-#ifdef DEBUG
-        printf(" - C: %c\tI1: %d\tI2: %d\n", curr_cmd->c, curr_cmd->i1, curr_cmd->i2);
-#endif
-        // ++nodesVisited;
-        // if ((currCommands - nodesVisited) % SNAPSHOT_THRESHOLD == 0)
-        // {
-        //     if (!savingState)
-        //     {
-        //         if (a == 0)
-        //             if (b == 0)
-        //                 break;
-        //             else
-        //                 a = 1;
-        //         for (int k = 0; (k < b - a + 1) && (a + k - 1 < current_state->length); ++k)
-        //         {
-        //             if (!found[k])
-        //             {
-        //                 found[k] = 1;
-        //                 (*buffer)[k] = current_state->document[a + k - 1];
-        //             }
-        //         }
-        //         break;
-        //     }
-        //     else
-        //         savingState = 0;
-        // }
         if (curr_cmd->c == CHANGE_C)
         {
-#ifdef DEBUG
-            printf("|\tneeded lines: ");
-            for (int j = 0; j < b - a + 1; ++j)
-                printf("%d ", a + j + mods[min(a + j, modlen) - 1]);
-            printf("\n|\tavailable %d lines: ", curr_cmd->i2 - curr_cmd->i1 + 1);
-            for (int j = 0; j < curr_cmd->i2 - curr_cmd->i1 + 1; ++j)
-                printf("%d ", curr_cmd->mod_index[j]);
-            printf("\n|\tfound: ");
-            for (int j = 0; j < b - a + 1; ++j)
-                printf("%d ", found[j]);
-            printf("\n");
-            printf("check %d <= %d %d\n", a + mods[min(a, modlen) - 1], curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1], curr_cmd->i2);
-#endif
             if ((a + mods[min(a, modlen) - 1] <= curr_cmd->mod_index[curr_cmd->i2 - curr_cmd->i1]) && (b + mods[min(b, modlen) - 1] >= curr_cmd->mod_index[0]))
             {
                 /* add counter of still not found lines in current command, when it's 0 break out of loop of k */
                 int localAvailable = curr_cmd->i2 - curr_cmd->i1 + 1;
                 for (int j = 0; (j < b - a + 1) && (to_find > 0); ++j)
                 {
-#ifdef DEBUG
-                    printf(" - %d %d\n", a + j + mods[min(a + j, modlen) - 1], curr_cmd->mod_index[j]);
-#endif
-                    for (int k = 0; (k < curr_cmd->i2 - curr_cmd->i1 + 1) && (localAvailable > 0) && (to_find > 0); ++k)
+                    for (int k = max(0, a - curr_cmd->i1); (k < curr_cmd->i2 - curr_cmd->i1 + 1) && (localAvailable > 0) && (to_find > 0); ++k)
                     {
                         if ((j < b - a + 1) && (found[j] == 0) && (a + j + mods[min(a + j, modlen) - 1] == curr_cmd->mod_index[k]))
                         {
-#ifdef DEBUG
-                            printf(" + FOUND %d == %d\n", a + j + mods[min(a + j, modlen) - 1], curr_cmd->mod_index[k]);
-#endif
                             found[j] = 1;
                             (*buffer)[j] = curr_cmd->lines[k];
                             --to_find;
@@ -398,14 +300,8 @@ void findLines(int a, int b, struct StringNode ***buffer) /* returns array of li
 }
 void documentInit() /* initialize document */
 {
-#ifdef DEBUG
-    printf("Initializing modifiers...\n");
-#endif
     /*  initialize index modifiers array */
     mods = calloc(1, sizeof(int));
-#ifdef DEBUG
-    printf("Initializing command history...\n");
-#endif
     /* initialize command history */
     latest_command = malloc(sizeof(*latest_command));
     latest_command->c = '#';
@@ -414,14 +310,6 @@ void documentInit() /* initialize document */
     latest_command->oldDocumentLength = 0;
     latest_command->prev = NULL;
     current_command = latest_command;
-#ifdef DEBUG
-    printf("Initializing state history...\n");
-#endif
-    /* initialize document state history */
-    latest_state = malloc(sizeof(*latest_state));
-    latest_state->length = -1;
-    latest_state->prev = NULL;
-    current_state = latest_state;
 }
 void cmdToHistory() /* adds a new change or delete command to the history */
 {
@@ -445,40 +333,6 @@ void cmdToHistory() /* adds a new change or delete command to the history */
     current_command = latest_command;
     ++currCommands;
     totCommands = currCommands;
-}
-void saveDocumentState() /* save a copy of the document state */
-{
-#ifdef DEBUG
-    printf("THRESHOLD REACHED\nsaving document state...\n");
-#endif
-    /* delete undone states, start new branch */
-    while (latest_state != current_state)
-    {
-        latest_state = latest_state->prev;
-        free(latest_state->next);
-    }
-    latest_state->next = malloc(sizeof(*latest_state));
-    latest_state->next->prev = latest_state;
-    latest_state = latest_state->next;
-    latest_state->next = NULL;
-    latest_state->length = documentLength;
-    latest_state->document = malloc(documentLength * sizeof(*(latest_state->document)));
-    current_state = latest_state;
-
-    savingState = 1;
-    findLines(1, documentLength, &(latest_state->document));
-
-#ifdef DEBUG
-    /* print the buffer */
-    for (int k = 0; k < documentLength; ++k)
-        if (!latest_state->document[k])
-            fputs("|\t.\n", stdout);
-        else
-        {
-            fputs("|\t", stdout);
-            fputs(latest_state->document[k]->string, stdout);
-        }
-#endif
 }
 void applyUndos() /* trigger application of grouped undos and redos */
 {
