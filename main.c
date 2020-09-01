@@ -1,7 +1,6 @@
 /* edU - Progetto Finale per l'esame di Algoritmi e Principi dell'informatica
  * 2019-2020, Politecnico di Milano
  * Alberto Mosconi */
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,11 +75,21 @@ void rotateLeft(struct StringNode *n);                                     /* ro
 void rotateRight(struct StringNode *n);                                    /* rotates the string tree to the right */
 void treeFixup(struct StringNode *n);                                      /* fix colors of tree */
 
+void fastInput()
+{
+    char cin;
+    while (cin = getchar_unlocked())
+    {
+        printf("%c\n", cin);
+    }
+}
+
 int main()
 {
     documentInit();
     while (1)
     {
+        fastInput();
         getInput(); /* fetch and parse input */
         switch (c)  /* handle different commands */
         {
